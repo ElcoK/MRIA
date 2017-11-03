@@ -268,6 +268,8 @@ class MRIA(object):
 
         try:
             RatMarg = pd.read_csv('..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
+            if set(list(RatMarg.index.values)) != set(list(self.countries+['ROW'])):
+                RatMarg = obtain_ratmarg(Table)
         except:
             RatMarg = obtain_ratmarg(Table)
  
@@ -410,8 +412,8 @@ class MRIA(object):
         def ObjectiveDis2(model):
             return (
                 sum(self.X[R,S] for S in model.S for R in model.R)
+                + 1.75*sum((self.Ratmarg[R,S]*self.DisImp[R,S]) for R in model.R for S in model.S)
                 + 2*sum((self.Ratmarg[R,S]*self.Rat[R,S]) for R in model.R for S in model.S)
-#                + sum((self.Ratmarg[R,S]*self.Rat[R,S]) for R in model.R for S in model.S)
                 + sum((sum(self.ImportShare[R,Rb,S]*(sum(self.A_matrix[R,S,Rb,Sb]*self.X[Rb,Sb] for Sb in model.Sb) + self.fd[Rb,S] + self.Rdem[Rb,S] - self.Rat[Rb,S]) for Rb in model.Rb if (R != Rb))
                 +  sum(self.ImportShare[R,Rb,S]*(self.DisImp[Rb,S]) for Rb in model.Rb if (R != Rb))) for R in model.R for S in model.S)
                 )    
@@ -420,7 +422,7 @@ class MRIA(object):
 
         opt = SolverFactory(solver)
         if solver is 'ipopt':
-            opt.options['max_iter'] = 1000
+            opt.options['max_iter'] = 5000
             opt.options['warm_start_init_point'] = 'yes'
             opt.options['warm_start_bound_push'] = 1e-6
             opt.options['warm_start_mult_bound_push'] = 1e-6
