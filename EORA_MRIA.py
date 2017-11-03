@@ -12,6 +12,7 @@ from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective
 import pandas as pd 
 import geopandas as gp
 from EORA_TABLE import Table
+from EORA_GAMS import obtain_ratmarg
 from pyomo.opt import SolverFactory
 import numpy as np
 
@@ -163,7 +164,7 @@ class MRIA(object):
 
         def X_bounds(model, R,S):
             if R in disrupted_ctry and S in disrupted_sctr:
-                return (0.0, (1/Regmaxcap*self.Xbase[R,S])*Disruption)
+                return (0.0, (1/Regmaxcap*self.Xbase[R,S])*disruption)
             else:
                 return (0.0, (1/Regmaxcap*self.Xbase[R,S])*1.1)
 
@@ -262,10 +263,14 @@ class MRIA(object):
         model.Rat = Var(model.R, model.S,bounds=Rat_bounds,initialize=0,doc='Rationing')
         self.Rat = model.Rat
 
-    def create_Ratmarg(self):
+    def create_Ratmarg(self,Table):
         model = self.m
-                
-        RatMarg = pd.read_csv('Ratmarg.csv',index_col =[0],header=0)
+
+        try:
+            RatMarg = pd.read_csv('..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
+        except:
+            RatMarg = obtain_ratmarg(Table)
+ 
         Ratmarginal = {(r,k): v for r, kv in RatMarg.iterrows() for k,v in kv.to_dict().items()}
  
         model.Ratmarg = Param(model.R, model.S,initialize=Ratmarginal, doc='Rationing marginal',mutable=True)
@@ -305,45 +310,41 @@ class MRIA(object):
             + self.ExpROW[R,S]
             )
 
-#            sum(self.A_matrix[R,S,R,Sb]*self.X[R,Sb] for Sb in model.Sb) + self.lfd[R,S] + self.TotExp[R,S]+ self.ExpROW[R,S]            
-#            )
-        
-        
         model.Demand = Var(model.R, model.S, bounds=(0.0,None),initialize=demand_init)  
         self.Demand = model.Demand
 
     """ Create baseline dataset to use in model """
-    def baseline_data(self,A_matrix,Z_matrix,FinalD,ValueA,disruption=None,disrupted_ctry=None,disrupted_sctr=None):
+    def baseline_data(self,Table,disruption=None,disrupted_ctry=None,disrupted_sctr=None):
 
         if disruption is None:
             disruption = 1.1
             disrupted_ctry = []
             disrupted_sctr = []
-        
-        self.create_A_mat(A_matrix)
-        self.create_FD(FinalD)
-        self.create_LFD(FinalD)
-        self.create_ExpImp(Z_matrix)
-        self.create_Xbase(Z_matrix,FinalD)
-        self.create_X(Z_matrix,FinalD,disruption,disrupted_ctry,disrupted_sctr)
-        self.create_VA(ValueA)
+
+        self.create_A_mat(Table.A_matrix)
+        self.create_FD(Table.FinalD)
+        self.create_LFD(Table.FinalD)
+        self.create_ExpImp(Table.Z_matrix)
+        self.create_Xbase(Table.Z_matrix,Table.FinalD)
+        self.create_X(disruption,disrupted_ctry,disrupted_sctr,Table.Z_matrix,Table.FinalD)
+        self.create_VA(Table.ValueA)
         self.create_Z_mat()
-        self.create_Trade(Z_matrix,FinalD)
+        self.create_Trade(Table.Z_matrix,Table.FinalD)
         self.create_TotExp()
         self.create_TotImp()
         self.create_ImpShares()
 
     """ Create additional parameters and variables required for impact
     analysis """
-    def impact_data(self,FinalD,Z_matrix,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=None):
+    def impact_data(self,Table,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=None):
 
         if Regmaxcap is None:
             Regmaxcap  = 0.98
         
         self.create_X_up(disruption,disrupted_ctry,disrupted_sctr,Regmaxcap)
         self.create_Rdem()
-        self.create_Rat(FinalD,Z_matrix)
-        self.create_Ratmarg()
+        self.create_Rat(Table.FinalD,Table.Z_matrix)
+        self.create_Ratmarg(Table)
         self.create_DisImp(disrupted_ctry)
         self.create_demand()
 
@@ -371,6 +372,11 @@ class MRIA(object):
         model.objective = Objective(rule=objective_base, sense=minimize, doc='Define objective function')
 
         opt = SolverFactory(solver)
+        if solver is 'ipopt':
+            opt.options['warm_start_init_point'] = 'yes'
+            opt.options['warm_start_bound_push'] = 1e-6
+            opt.options['warm_start_mult_bound_push'] = 1e-6
+            opt.options['mu_init'] = 1e-6
         results = opt.solve(model,tee=True)
         #sends results to stdout
         results.write()
@@ -405,6 +411,7 @@ class MRIA(object):
             return (
                 sum(self.X[R,S] for S in model.S for R in model.R)
                 + 2*sum((self.Ratmarg[R,S]*self.Rat[R,S]) for R in model.R for S in model.S)
+#                + sum((self.Ratmarg[R,S]*self.Rat[R,S]) for R in model.R for S in model.S)
                 + sum((sum(self.ImportShare[R,Rb,S]*(sum(self.A_matrix[R,S,Rb,Sb]*self.X[Rb,Sb] for Sb in model.Sb) + self.fd[Rb,S] + self.Rdem[Rb,S] - self.Rat[Rb,S]) for Rb in model.Rb if (R != Rb))
                 +  sum(self.ImportShare[R,Rb,S]*(self.DisImp[Rb,S]) for Rb in model.Rb if (R != Rb))) for R in model.R for S in model.S)
                 )    
@@ -412,6 +419,14 @@ class MRIA(object):
         model.objective = Objective(rule=ObjectiveDis2, sense=minimize, doc='Define objective function')
 
         opt = SolverFactory(solver)
+        if solver is 'ipopt':
+            opt.options['max_iter'] = 1000
+            opt.options['warm_start_init_point'] = 'yes'
+            opt.options['warm_start_bound_push'] = 1e-6
+            opt.options['warm_start_mult_bound_push'] = 1e-6
+            opt.options['mu_init'] = 1e-6
+            opt.options['tol'] = 1e-6
+
         results = opt.solve(model,tee=True)
         #sends results to stdout
         results.write()
@@ -449,11 +464,11 @@ if __name__ == '__main__':
 
     output = pd.DataFrame()
 
-    MRIA_TZA.baseline_data(EORA_TZA.A_matrix,EORA_TZA.Z_matrix,EORA_TZA.FinalD,EORA_TZA.ValueA)
-    MRIA_TZA.impact_data(EORA_TZA.FinalD,EORA_TZA.Z_matrix,disruption,disrupted_ctry,disrupted_sctr)
+    MRIA_TZA.baseline_data(EORA_TZA,disruption,disrupted_ctry,disrupted_sctr)
+    MRIA_TZA.impact_data(EORA_TZA,disruption,disrupted_ctry,disrupted_sctr)
     output['x_in'] = pd.Series(MRIA_TZA.X.get_values())
 
-    MRIA_TZA.run_basemodel()
+#    MRIA_TZA.run_basemodel()
     MRIA_TZA.run_impactmodel()
     
     output['x_out'] = pd.Series(MRIA_TZA.X.get_values())
