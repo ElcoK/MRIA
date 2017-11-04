@@ -11,8 +11,7 @@ import os
 from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize, ConstraintList
 import pandas as pd 
 import geopandas as gp
-from EORA_TABLE import Table
-from EORA_GAMS import obtain_ratmarg
+from create_ratmarg import obtain_ratmarg
 from pyomo.opt import SolverFactory
 import numpy as np
 
@@ -25,7 +24,7 @@ class MRIA(object):
     constraints and objectives for different model setups.
     """
     
-    def __init__(self, name, list_countries,list_sectors):
+    def __init__(self, name, list_countries,list_sectors,EORA=False):
  
         """
         Creation of a Concrete Model, specify the countries and sectors
@@ -36,8 +35,12 @@ class MRIA(object):
         self.countries = list_countries
         self.total_countries = len(list_countries)
         self.sectors = list_sectors
+        if EORA is True:
+            self.EORA = True
+        else:
+            self.EORA = False
    
-    def create_sets(self,RoW=None,FD_SET=None,VA_SET=None):
+    def create_sets(self,FD_SET=None,VA_SET=None):
 
         """
         Creation of the various sets. First step in future-proofing by allowing
@@ -46,19 +49,19 @@ class MRIA(object):
         
         self.m.S = Set(initialize=self.sectors, doc='sectors')
 
-        if RoW is None:
+        if self.EORA is True:
             self.m.rROW = Set(initialize=self.countries+['ROW'],ordered=True, doc='regions including export')
             self.m.R = Set(initialize=self.countries+['ROW'],ordered=True, doc='regions')
         else:
-            self.m.rROW = Set(initialize=self.countries+['ROW'],ordered=True, doc='regions including export')
-            self.m.R = Set(initialize=self.countries+['ROW'],ordered=True, doc='regions')
+            self.m.rROW = Set(initialize=self.countries,ordered=True, doc='regions including export')
+            self.m.R = Set(initialize=self.countries,ordered=True, doc='regions')
 
-        if FD_SET is None:
+        if self.EORA is True:
             self.m.fdemand = Set(initialize=['P3h', 'P3n','P3g', 'P51','P52','P53'], doc='Final Demand')
         else:
             self.m.fdemand = Set(initialize=FD_SET, doc='Final Demand')
 
-        if VA_SET is None:
+        if self.EORA is True:
             self.m.VA = Set(initialize=['VA'], doc='value added')
         else:
             self.m.VA = Set(initialize=VA_SET, doc='value added')
@@ -104,7 +107,23 @@ class MRIA(object):
         self.lfd = model.lfd        
 
     ''' Specify export and import to the rest of the world '''
-    def create_ExpImp(self,Z_matrix):
+    def create_ExpImp(self,ExpROW,ImpROW):
+        model = self.m
+
+        # Specify Export ROW
+        def ExpROW_ini(m,R,S):
+            return (sum(ExpROW[R,S,Rb,'Export'] for Rb in model.Rb))
+        model.ExpROW = Param(model.R, model.S, initialize=ExpROW_ini, doc='Exports to the rest of the world')        
+        
+        # Specify Import ROW
+        def ImpROW_init(m,R,S):
+            return (ImpROW[R,S,'Import'])
+        model.ImpROW = Param(model.R, model.S, initialize=ImpROW_init, doc='Imports from the rest of the world')        
+ 
+        self.ExpROW = model.ExpROW
+        self.ImpROW = model.ImpROW
+
+    def create_ExpImp_EORA(self,Z_matrix):
         model = self.m
 
         # Specify Export ROW
@@ -119,6 +138,7 @@ class MRIA(object):
  
         self.ExpROW = model.ExpROW
         self.ImpROW = model.ImpROW
+
 
     """ Specify X variables """
     def create_X_up(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap):
@@ -269,9 +289,9 @@ class MRIA(object):
         try:
             RatMarg = pd.read_csv('..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
             if set(list(RatMarg.index.values)) != set(list(self.countries+['ROW'])):
-                RatMarg = obtain_ratmarg(Table)
+                RatMarg = obtain_ratmarg(Table,self.EORA)
         except:
-            RatMarg = obtain_ratmarg(Table)
+            RatMarg = obtain_ratmarg(Table,self.EORA)
  
         Ratmarginal = {(r,k): v for r, kv in RatMarg.iterrows() for k,v in kv.to_dict().items()}
  
@@ -316,17 +336,21 @@ class MRIA(object):
         self.Demand = model.Demand
 
     """ Create baseline dataset to use in model """
-    def baseline_data(self,Table,disruption=None,disrupted_ctry=None,disrupted_sctr=None):
+    def baseline_data(self,Table,EORA=False,disruption=None,disrupted_ctry=None,disrupted_sctr=None):
 
         if disruption is None:
             disruption = 1.1
             disrupted_ctry = []
             disrupted_sctr = []
 
+        if self.EORA is True:
+            self.create_ExpImp_EORA(Table.Z_matrix)
+        else:
+            self.create_ExpImp(Table.ExpROW,Table.ImpROW)
+
         self.create_A_mat(Table.A_matrix)
         self.create_FD(Table.FinalD)
         self.create_LFD(Table.FinalD)
-        self.create_ExpImp(Table.Z_matrix)
         self.create_Xbase(Table.Z_matrix,Table.FinalD)
         self.create_X(disruption,disrupted_ctry,disrupted_sctr,Table.Z_matrix,Table.FinalD)
         self.create_VA(Table.ValueA)
@@ -335,6 +359,9 @@ class MRIA(object):
         self.create_TotExp()
         self.create_TotImp()
         self.create_ImpShares()
+
+
+
 
     """ Create additional parameters and variables required for impact
     analysis """
@@ -445,47 +472,5 @@ class MRIA(object):
             #sends results to stdout
             results.write()
 
-if __name__ == '__main__':
 
-    ''' Specify current working directory'''
-    curdir = os.getcwd()
-
-    '''Specify which countries should be included in the subset'''
-    list_countries = ['TZA','KEN','RWA','UGA','COD','ZMB','MWI','MOZ']
-
-
-    '''Create table and load all data'''
-    EORA_TZA = Table('EORA_TZA',2010,list_countries)
-    EORA_TZA.load_subset(curdir)
-
-    '''Specify disruption'''
-    disruption = 1.1
-    disrupted_ctry =  ['TZA']
-    disrupted_sctr = ['i'+str(n+15) for n in range(10)]
-
-    '''Create model'''
-    MRIA_TZA = MRIA('MRIA_TZA',list_countries,EORA_TZA.sectors)
     
-    '''Define sets and alias'''
-    # CREATE SETS
-    MRIA_TZA.create_sets()
-    
-    # CREATE ALIAS
-    MRIA_TZA.create_alias()
-
-    ''' Define tables and parameters'''
-    Regmaxcap = 0.98
-
-    output = pd.DataFrame()
-
-    MRIA_TZA.baseline_data(EORA_TZA,disruption,disrupted_ctry,disrupted_sctr)
-    MRIA_TZA.impact_data(EORA_TZA,disruption,disrupted_ctry,disrupted_sctr)
-    output['x_in'] = pd.Series(MRIA_TZA.X.get_values())
-
-#    MRIA_TZA.run_basemodel()
-    MRIA_TZA.run_impactmodel()
-    
-    output['x_out'] = pd.Series(MRIA_TZA.X.get_values())
-    output['loss'] = output['x_in'] - output['x_out']
-  
-    print(sum(output['x_in'] - output['x_out']))

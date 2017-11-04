@@ -1,17 +1,116 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov  1 11:04:45 2017
+Created on Sat Nov  4 15:26:37 2017
 
-This script builds the input table for the EORA database
-to be used with the MRIA model
-
-Elco Koks
-
+@author: elcok
 """
-import os
 import pandas as pd
+import numpy as np
+import os
 
 class Table(object):
+
+    """
+    This is the class object 'EORA' which is used to set up the table.
+    """
+   
+    def __init__(self, name, filepath,year,list_countries=None):
+        
+        self.year = year
+        self.name = name
+        self.file = filepath
+        if list_countries is not None:
+            self.countries = list_countries
+            self.total_countries = len(list_countries)
+
+
+    def load_labels(self):
+
+        """
+        LOAD LABELS
+        """
+
+        if 'xls' in self.file:
+            FD_labels = pd.read_excel(self.file,sheetname="labels_FD",names=['reg','tfd'],header=None)
+            Exp_labels = pd.read_excel(self.file,sheetname="labels_ExpROW",names=['reg','export'],header=None)
+            T_labels = pd.read_excel(self.file,sheetname="labels_T",header=None,names=['reg','ind'])
+            VA_labels = pd.read_excel(self.file,sheetname="labels_VA",names=['Import','ValueA'],header=None)
+
+ 
+        self.FD_labels = FD_labels
+        self.Exp_labels = Exp_labels
+        self.T_labels = T_labels
+        self.VA_labels = VA_labels
+        self.sectors = list(T_labels['ind'].unique())
+
+
+    def load_all_data(self):
+        
+        try: 
+            self.FD_labels is None
+        except:
+            self.load_labels()
+
+        """
+        LOAD DATA
+        """
+        FD_data = pd.read_excel(self.file,sheetname="FD",header=None)
+        T_data  = pd.read_excel(self.file,sheetname="T",header=None)
+        VA_data = pd.read_excel(self.file,sheetname="VA",header=None)
+        ExpROW_data = pd.read_excel(self.file,sheetname="ExpROW",header=None)
+
+        """
+        Add labels to the data from 'load_labels'
+        """
+        FD_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        ExpROW_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        T_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+
+        reg_label = np.array(list(self.T_labels.values.T[0])+list(self.FD_labels.values.T[0])+list(self.Exp_labels.values.T[0]))
+        ind_label = np.array(list(self.T_labels.values.T[1])+list(self.FD_labels.values.T[1])+list(self.Exp_labels.values.T[1]))
+        va_index = np.vstack((reg_label,ind_label))
+    
+        VA_data.index = pd.MultiIndex.from_arrays(va_index)
+        
+        FD_data.columns = pd.MultiIndex.from_arrays(self.FD_labels.values.T)
+        ExpROW_data.columns = pd.MultiIndex.from_arrays(self.Exp_labels.values.T)
+        T_data.columns = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        VA_data.columns= pd.MultiIndex.from_arrays(self.VA_labels.values)
+        
+        """
+        And return the data to the mother class
+        """
+        self.FD_data = FD_data
+        self.T_data = T_data
+        self.VA_data = pd.DataFrame(VA_data['VA'])
+        self.ImpROW_data = pd.DataFrame(VA_data['Import'])
+        self.ExpROW_data = ExpROW_data
+
+
+    def prep_data(self):
+
+        try: 
+            self.FD_data is None
+        except:
+            self.load_all_data()
+        
+        self.sum_data = self.T_data.sum(axis=1)+self.FD_data.sum(axis=1)+self.ExpROW_data.sum(axis=1)
+
+        self.A = self.T_data.divide(self.sum_data,axis=1)
+    
+        """
+        Return all the parts of the dataset to the class again
+        """
+        
+        self.Z_matrix = {r + k: v for r, kv in self.T_data.iterrows() for k,v in kv.to_dict().items()}
+        self.A_matrix = {r + k: v for r, kv in self.A.iterrows() for k,v in kv.to_dict().items()}
+        self.FinalD = {r + k: v for r, kv in self.FD_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ValueA = {r + (k,): v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ImpROW = {r + (k,): v for r, kv in self.ImpROW_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ExpROW = {r + k: v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
+
+
+class Table_EORA(object):
 
     """
     This is the class object 'EORA' which is used to set up the table.
@@ -205,8 +304,7 @@ class Table(object):
         self.A_matrix = {r + k: v for r, kv in A.iterrows() for k,v in kv.to_dict().items()}
         self.FinalD = {r + k: v for r, kv in subset_FD.iterrows() for k,v in kv.to_dict().items()}
         self.ValueA = {r + (k,): v for r, kv in VA_TZAetal.iterrows() for k,v in kv.to_dict().items()}
-
-    
+        
 if __name__ == '__main__':
 
     curdir = os.getcwd()
@@ -215,10 +313,9 @@ if __name__ == '__main__':
     list_sectors = ['i'+str(n+1) for n in range(26)]
 
     # CREATE MODEL
-    EORA_TZA = Table('EORA_TZA',2010,list_countries)
+    EORA_TZA = Table_EORA('EORA_TZA',2010,list_countries)
     
     EORA_TZA.load_labels()
     
     EORA_TZA.load_all_data()
 
-#    FD_DATA = EORA_TZA.FD_data
