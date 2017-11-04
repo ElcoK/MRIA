@@ -288,7 +288,9 @@ class MRIA(object):
 
         try:
             RatMarg = pd.read_csv('..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
-            if set(list(RatMarg.index.values)) != set(list(self.countries+['ROW'])):
+            if self.EORA is True and (set(list(RatMarg.index.values)) != set(list(self.countries+['ROW']))):
+                RatMarg = obtain_ratmarg(Table,self.EORA)
+            elif (set(list(RatMarg.index.values)) != set(list(self.countries))):
                 RatMarg = obtain_ratmarg(Table,self.EORA)
         except:
             RatMarg = obtain_ratmarg(Table,self.EORA)
