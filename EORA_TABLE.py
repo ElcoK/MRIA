@@ -20,6 +20,10 @@ class Table(object):
     def __init__(self, name, year,list_countries=None):
         
         self.year = year
+<<<<<<< HEAD
+=======
+        self.name = name
+>>>>>>> 6f2e463a46afaa5547c867f423c43bd6f6a6de2c
         if list_countries is not None:
             self.countries = list_countries
             self.total_countries = len(list_countries)
