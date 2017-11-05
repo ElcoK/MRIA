@@ -41,12 +41,8 @@ if __name__ == '__main__':
     '''Run model and create some output'''
     output = pd.DataFrame()
     
-   
-
-#    MRIA_model.run_basemodel()
-
     '''Specify disruption'''
-    disruption = 0.9
+    disruption = 1.1
     disrupted_ctry =  ['Elms']
     disrupted_sctr = ['Manu']
 

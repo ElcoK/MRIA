@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov  3 15:11:16 2017
+Create output file for gams and run a quick gams module to estimate marginal values of rationing demand
 
-@author: cenv0574
+@author: Elco Koks
+
+@date: Nov, 2017
 """
 
 import pandas as pd

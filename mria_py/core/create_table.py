@@ -2,8 +2,11 @@
 """
 Created on Sat Nov  4 15:26:37 2017
 
-@author: elcok
+@author: Elco Koks
+
+@date: Nov, 2017
 """
+
 import pandas as pd
 import numpy as np
 
@@ -13,7 +16,7 @@ class Table(object):
     This is the class object 'EORA' which is used to set up the table.
     """
    
-    def __init__(self, name, filepath,year,list_countries=None):
+    def __init__(self, name,filepath,year,list_countries=None):
         
         self.year = year
         self.name = name

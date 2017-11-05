@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov  1 10:18:10 2017
+This script builds the MRIA model
 
+@author: Elco Koks
 
-This script builds the MRIA model using the EORA database as input
+@date: Nov, 2017
 
 """
 
@@ -38,7 +39,7 @@ class MRIA(object):
         else:
             self.EORA = False
    
-    def create_sets(self,FD_SET=None,VA_SET=None):
+    def create_sets(self,FD_SET=[],VA_SET=[]):
 
         """
         Creation of the various sets. First step in future-proofing by allowing
@@ -139,7 +140,7 @@ class MRIA(object):
 
 
     """ Specify X variables """
-    def create_X_up(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap):
+    def create_X_up(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=0.98):
         model = self.m
 
         def shock_init(model, R,S):
@@ -162,17 +163,17 @@ class MRIA(object):
             self.create_ExpImp(Z_matrix)
 
         def x_init_base(model,R,S):
-            return( sum(Z_matrix[R,S,Rb,Sb] for Rb in model.Rb for Sb in model.Sb) + self.fd[R,S] + self.ExpROW[R,S])
+            return( sum(Z_matrix[R,S,Rb,Sb] for Rb in model.Rb for Sb in 
+                        model.Sb) + self.fd[R,S] + self.ExpROW[R,S])
     
         model.Xbase = Param(model.R, model.S,initialize=x_init_base,doc='Total Production baseline')
         self.Xbase = model.Xbase
 
     '''create X'''
-    def create_X(self,disruption,disrupted_ctry,disrupted_sctr,A_matrix_ini=None,Z_matrix=None,FinalD=None,Xbase=None,fd=None,ExpROW=None,Regmaxcap=None):
-        model = self.m
+    def create_X(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=0.98,
+                 A_matrix_ini=None,Z_matrix=None,FinalD=None,Xbase=None,fd=None,ExpROW=None):
 
-        if Regmaxcap is None:
-            Regmaxcap = 0.98
+        model = self.m
 
         if self.Xbase.active is not True:
             self.create_Xbase(Z_matrix,FinalD)
@@ -187,7 +188,8 @@ class MRIA(object):
                 return (0.0, (1/Regmaxcap*self.Xbase[R,S])*1.1)
 
         def x_init(model,R,S):
-            return( sum(self.A_matrix[R,S,Rb,Sb]*self.Xbase[Rb,Sb] for Rb in model.Rb for Sb in model.Sb) + self.fd[R,S] + self.ExpROW[R,S])
+            return( sum(self.A_matrix[R,S,Rb,Sb]*self.Xbase[Rb,Sb] for Rb in model.Rb 
+                        for Sb in model.Sb) + self.fd[R,S] + self.ExpROW[R,S])
             
         model.X = Var(model.R, model.S, bounds=X_bounds,initialize=x_init, doc='Total Production')
         
@@ -299,11 +301,8 @@ class MRIA(object):
         self.Ratmarg = model.Ratmarg
 
     '''Disaster import variable'''
-    def create_DisImp(self,disrupted_ctry,Regmaxcap=None):
+    def create_DisImp(self,disrupted_ctry,Regmaxcap=0.98):
         model = self.m
-
-        if Regmaxcap is None:
-            Regmaxcap = 0.98
 
         #problem regions
         dimp_ctry = ['KEN','UGA']
@@ -336,12 +335,7 @@ class MRIA(object):
         self.Demand = model.Demand
 
     """ Create baseline dataset to use in model """
-    def baseline_data(self,Table,disruption=None,disrupted_ctry=None,disrupted_sctr=None,EORA=None):
-
-        if disruption is None:
-            disruption = 1.1
-            disrupted_ctry = []
-            disrupted_sctr = []
+    def baseline_data(self,Table,disruption=1.1,disrupted_ctry=[],disrupted_sctr=[],EORA=None):
 
         if self.EORA is True:
             self.create_ExpImp_EORA(Table.Z_matrix)
@@ -352,7 +346,7 @@ class MRIA(object):
         self.create_FD(Table.FinalD)
         self.create_LFD(Table.FinalD)
         self.create_Xbase(Table.Z_matrix,Table.FinalD)
-        self.create_X(disruption,disrupted_ctry,disrupted_sctr,Table.Z_matrix,Table.FinalD)
+        self.create_X(disruption,disrupted_ctry,disrupted_sctr,Z_matrix=Table.Z_matrix,FinalD = Table.FinalD)
         self.create_VA(Table.ValueA)
         self.create_Z_mat()
         self.create_Trade(Table.FinalD)
@@ -362,12 +356,10 @@ class MRIA(object):
 
     """ Create additional parameters and variables required for impact
     analysis """
-    def impact_data(self,Table,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=None):
+    def impact_data(self,Table,disruption=1.1,disrupted_ctry=[],disrupted_sctr=[],Regmaxcap=0.98):
 
-        if Regmaxcap is None:
-            Regmaxcap  = 0.98
         
-        self.create_X_up(disruption,disrupted_ctry,disrupted_sctr,Regmaxcap)
+        self.create_X_up(disruption,disrupted_ctry,disrupted_sctr)
         self.create_Rdem()
         self.create_Rat(Table.FinalD,Table.Z_matrix)
         self.create_Ratmarg(Table)
@@ -465,7 +457,7 @@ class MRIA(object):
         if output is None:
             opt.solve(model,tee=False)
         else:
-            results = opt.solve(model,tee=False)
+            results = opt.solve(model,tee=True)
             #sends results to stdout
             results.write()
 

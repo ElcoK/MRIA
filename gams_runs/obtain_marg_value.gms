@@ -119,7 +119,7 @@ Importshare(R,Rb,S)$(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S))=Tr
 ImportshareDisImp(Rb,R,S) = Importshare(R,Rb,S)           ;
 
 
-execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade,FinDem
+*execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade,FinDem
 
 
 EQUATIONS
@@ -169,7 +169,7 @@ test_diff =  sum((R,S),RealDiff(R,S));
 Xdiff = sum((R,S),Xbase(R,S) - X.L(R,S));
 
 
-execute_unload 'output_TheVale_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
+*execute_unload 'output_TheVale_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
 
 EQUATIONS
          demDisRatMarg(R,S)      demand is equal to supply on the product level for every region

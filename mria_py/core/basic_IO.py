@@ -7,7 +7,8 @@ Created on Sun Nov  5 14:05:32 2017
 
 import pandas as pd 
 import numpy as np
-from create_table import Table
+from mria_py.core.create_table import Table
+
 
 class basic_IO(object):
     
