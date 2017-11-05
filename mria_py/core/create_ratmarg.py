@@ -7,7 +7,7 @@ Created on Fri Nov  3 15:11:16 2017
 
 import pandas as pd
 from gams import GamsWorkspace, GamsParameter
-from create_table import Table,Table_EORA,Table_OECD
+from mria_py.core.create_table import Table,Table_EORA,Table_OECD
 from shutil import copyfile
 
 
@@ -15,7 +15,7 @@ def load_base_db(table_in,EORA=False,RoW=None):
 
     '''CREATE GAMS WORKSPACE'''
     
-    ws = GamsWorkspace('..\\gams_runs\\')
+    ws = GamsWorkspace('..\\..\\gams_runs\\')
     
     ''' CREATE INPUT FILES GAMS GDX '''
     
@@ -92,7 +92,7 @@ def load_base_db(table_in,EORA=False,RoW=None):
         val.add_record(k).value = v 
         
     # And save to GDX file
-    db.export(("..\\gams_runs\\%s.gdx" % table_in.name))
+    db.export(("..\\..\\gams_runs\\%s.gdx" % table_in.name))
 
 def obtain_ratmarg(table_in,EORA=False):
 
@@ -107,18 +107,18 @@ def obtain_ratmarg(table_in,EORA=False):
     RUN SCRIPT WITH DISRUPTION
     '''
 
-    ws = GamsWorkspace('..\\gams_runs\\')
+    ws = GamsWorkspace('..\\..\\gams_runs\\')
     
     if EORA is False:
-        gamsfile_in = "..\\gams_runs\\obtain_marg_value.gms"
-        gamsfile = "..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
+        gamsfile_in = "..\\..\\gams_runs\\obtain_marg_value.gms"
+        gamsfile = "..\\..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
         copyfile(gamsfile_in, gamsfile)
         str_ctry = ','.join(table_in.countries)    
         str_fd = ','.join(list(table_in.FD_labels['tfd'].unique()))
 
     else:
-        gamsfile_in = "..\\gams_runs\\obtain_marg_value_EORA.gms"
-        gamsfile = "..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
+        gamsfile_in = "..\\..\\gams_runs\\obtain_marg_value_EORA.gms"
+        gamsfile = "..\\..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
         copyfile(gamsfile_in, gamsfile)
         str_ctry = ','.join(table_in.countries+['ROW']) 
         str_fd = ','.join(list(table_in.FD_labels['FD'].unique()))
@@ -156,7 +156,7 @@ def obtain_ratmarg(table_in,EORA=False):
     Ratmarginal = pd.DataFrame(Ratmarg, index=index_).unstack()
     Ratmarginal.columns = Ratmarginal.columns.droplevel()
 
-    Ratmarginal.to_csv('..\input_data\Ratmarg_%s.csv' % table_in.name)
+    Ratmarginal.to_csv('..\\..\\input_data\\Ratmarg_%s.csv' % table_in.name)
 
 
     return Ratmarginal    

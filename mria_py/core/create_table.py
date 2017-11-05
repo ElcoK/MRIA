@@ -142,11 +142,11 @@ class Table_EORA(object):
         LOAD LABELS
         """
     
-        FD_labels = pd.read_csv('..\input_data\labels_FD.txt', sep='\t',index_col=False, 
+        FD_labels = pd.read_csv('..\..\input_data\labels_FD.txt', sep='\t',index_col=False, 
                                 names=['COUNTRY','CNTRY_CODE','Final Demand','FD'])
-        T_labels = pd.read_csv('..\input_data\labels_T.txt', sep='\t',index_col=False,
+        T_labels = pd.read_csv('..\..\input_data\labels_T.txt', sep='\t',index_col=False,
                                names=['COUNTRY','CNTRY_CODE','Industries','IND'])
-        VA_labels = pd.read_csv('..\input_data\labels_VA.txt', sep='\t',index_col=False,
+        VA_labels = pd.read_csv('..\..\input_data\labels_VA.txt', sep='\t',index_col=False,
                                 names=['Value Added','VA'])
         
 
@@ -186,9 +186,9 @@ class Table_EORA(object):
         """
         LOAD DATA
         """
-        FD_data = pd.read_csv('..\input_data\Eora26_%s_bp_FD.txt' % self.year, sep='\t',index_col=False,header=None)/1000
-        T_data = pd.read_csv('..\input_data\Eora26_%s_bp_T.txt' % self.year, sep='\t',index_col=False,header=None)/1000
-        VA_data = pd.read_csv('..\input_data\Eora26_%s_bp_VA.txt' % self.year, sep='\t',index_col=False,header=None)/1000
+        FD_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_FD.txt' % self.year, sep='\t',index_col=False,header=None)/1000
+        T_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_T.txt' % self.year, sep='\t',index_col=False,header=None)/1000
+        VA_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_VA.txt' % self.year, sep='\t',index_col=False,header=None)/1000
 
         """
         Add labels to the data from 'load_labels'
@@ -345,10 +345,10 @@ class Table_OECD(object):
         """
 
         if 'csv' in self.file:
-            FD_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_FD",names=['reg','tfd'],header=None)
-            Exp_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_ExpROW",names=['export'],header=None)
-            T_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_T",header=None,names=['reg','ind','reg2'])
-            VA_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_VA",names=['ValueA'],header=None)
+            FD_labels = pd.read_excel('..\..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_FD",names=['reg','tfd'],header=None)
+            Exp_labels = pd.read_excel('..\..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_ExpROW",names=['export'],header=None)
+            T_labels = pd.read_excel('..\..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_T",header=None,names=['reg','ind','reg2'])
+            VA_labels = pd.read_excel('..\..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_VA",names=['ValueA'],header=None)
 
         """
         Return labels to the mother class

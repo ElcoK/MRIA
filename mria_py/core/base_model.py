@@ -9,8 +9,9 @@ This script builds the MRIA model using the EORA database as input
 
 from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize
 import pandas as pd 
-from create_ratmarg import obtain_ratmarg
 from pyomo.opt import SolverFactory
+from mria_py.core.create_ratmarg import obtain_ratmarg
+
 
 class MRIA(object):
 
@@ -215,12 +216,12 @@ class MRIA(object):
         model.Z_matrix = Param(model.R,model.S,model.R,model.Sb,initialize=Z_matrix_init,doc = 'Z matrix')
         self.Z_matrix = model.Z_matrix
 
-    def create_Trade(self,Z_matrix=None,FinalD=None):
+    def create_Trade(self,FinalD,Z_matrix=None):
         model = self.m
 
         def Trade_init(model,R,Rb,S):
             while R != Rb:
-                return sum(self.Z_matrix[Rb,S,R,i] for i in model.Sb)  + sum(self.FinalD[Rb,S,R,i] for i in model.fdemand) 
+                return sum(self.Z_matrix[Rb,S,R,i] for i in model.Sb)  + sum(FinalD[Rb,S,R,i] for i in model.fdemand) 
             
         model.trade = Param(model.R,model.Rb, model.S, initialize=Trade_init, doc='Trade')        
         self.trade = model.trade
@@ -284,7 +285,7 @@ class MRIA(object):
         model = self.m
 
         try:
-            RatMarg = pd.read_csv('..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
+            RatMarg = pd.read_csv('..\..\input_data\Ratmarg_%s.csv' % self.name, index_col =[0],header=0)
             if self.EORA is True and (set(list(RatMarg.index.values)) != set(list(self.countries+['ROW']))):
                 RatMarg = obtain_ratmarg(Table,self.EORA)
             elif (set(list(RatMarg.index.values)) != set(list(self.countries))):
@@ -335,7 +336,7 @@ class MRIA(object):
         self.Demand = model.Demand
 
     """ Create baseline dataset to use in model """
-    def baseline_data(self,Table,EORA=False,disruption=None,disrupted_ctry=None,disrupted_sctr=None):
+    def baseline_data(self,Table,disruption=None,disrupted_ctry=None,disrupted_sctr=None,EORA=None):
 
         if disruption is None:
             disruption = 1.1
@@ -354,7 +355,7 @@ class MRIA(object):
         self.create_X(disruption,disrupted_ctry,disrupted_sctr,Table.Z_matrix,Table.FinalD)
         self.create_VA(Table.ValueA)
         self.create_Z_mat()
-        self.create_Trade()
+        self.create_Trade(Table.FinalD)
         self.create_TotExp()
         self.create_TotImp()
         self.create_ImpShares()

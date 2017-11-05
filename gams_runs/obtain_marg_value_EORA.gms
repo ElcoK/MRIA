@@ -19,24 +19,24 @@ Parameter
          Z_matrix_ini(reg,rowcol,reg2,rowcol)
          FinDem_ini(reg,rowcol,reg2,rowcol)
          ValueA_ini(reg,col,rowcol)
-         ExpROW_ini(reg,rowcol,reg2,rowcol)
+         ExpROW_ini(reg,col,rowcol)
          ImpROW_ini(reg,col,rowcol)
          A_matrix_ini(reg,rowcol,reg2,rowcol)
  ;
 * IMPORT SETS AND SUPPLY - USE TABLES
-$GDXIN TheVale.gdx
-$LOAD reg,rowcol,row,col,Z_matrix_ini,FinDem_ini,ValueA_ini,A_matrix_ini,ExpROW_ini
+$GDXIN EORA_TZA.gdx
+$LOAD reg,rowcol,row,col,Z_matrix_ini,FinDem_ini,ValueA_ini,A_matrix_ini
 $GDXIN
 
 * DEFINE OTHER ESSENTIAL SETS  (and create a subset for NL, which makes things go faster for checking)
 set
-         S(col) list of industries  /Agri,Comm,Manu,NonComm/
+S(col) list of industries  /i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17,i18,i19,i20,i21,i22,i23,i24,i25,i26/
          rROW(reg) The region subset plus ROW for the cost estimation
-/Elms,Hazel,Montagu,Fogwell,Riverside,Oatlands/
+/TZA,KEN,RWA,UGA,COD,ZMB,MWI,MOZ,ROW/
          r(rROW) The region subset used in this analysis
-/Elms,Hazel,Montagu,Fogwell,Riverside,Oatlands/
+/TZA,KEN,RWA,UGA,COD,ZMB,MWI,MOZ,ROW/
          fdemand(col) final demand
-/FinDem/
+/P3h,P3n,P3g,P51,P52,P53/
          v_a(row) value added /VA/
          slctd_regions(reg) selected regions only
 ;
@@ -87,7 +87,7 @@ POSITIVE VARIABLE
 
 * BASE DATA
 FinDem(R,S) = sum((Rb,fdemand), FinDem_ini(R,S,Rb,fdemand))    ;
-ExpROW(R,S) = sum(Rb,ExpROW_ini(R,S,Rb,'Export'));
+ExpROW(R,S) = Z_matrix_ini(R,S,'ROW','Total') + FinDem_ini(R,S,'ROW','Total');
 X.L(R,S) = sum((Rb,Sb), Z_matrix_ini(R,S,Rb,Sb)) + FinDem(R,S) + ExpROW(R,S) ;
 
 * A matrix
@@ -115,12 +115,12 @@ Expshare(R,Rb,S)$TotExp(r,S)=Trade(R,Rb,S)/TotExp(rb,S);
 
 * LOAD IMPORTS
 TotImp(R,S)=sum((Rb), Trade(R,Rb,S));
-
+ImpROW(R,S) = Z_matrix_ini('ROW','Total',R,S) ;
 Importshare(R,Rb,S)=Trade(Rb,R,S)/(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S));
 ImportshareDisImp(Rb,R,S) = Importshare(R,Rb,S)           ;
 
 
-execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade,FinDem
+execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade
 
 
 EQUATIONS
@@ -170,7 +170,7 @@ test_diff =  sum((R,S),RealDiff(R,S));
 Xdiff = sum((R,S),Xbase(R,S) - X.L(R,S));
 
 
-execute_unload 'output_TheVale_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
+execute_unload 'output_EORA_TZA_ROW_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
 
 EQUATIONS
          demDisRatMarg(R,S)      demand is equal to supply on the product level for every region

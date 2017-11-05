@@ -19,24 +19,24 @@ Parameter
          Z_matrix_ini(reg,rowcol,reg2,rowcol)
          FinDem_ini(reg,rowcol,reg2,rowcol)
          ValueA_ini(reg,col,rowcol)
-         ExpROW_ini(reg,col,rowcol)
+         ExpROW_ini(reg,rowcol,rowcol)
          ImpROW_ini(reg,col,rowcol)
          A_matrix_ini(reg,rowcol,reg2,rowcol)
  ;
 * IMPORT SETS AND SUPPLY - USE TABLES
-$GDXIN EORA_TZA.gdx
-$LOAD reg,rowcol,row,col,Z_matrix_ini,FinDem_ini,ValueA_ini,A_matrix_ini
+$GDXIN TheVale.gdx
+$LOAD reg,rowcol,row,col,Z_matrix_ini,FinDem_ini,ValueA_ini,A_matrix_ini,ExpROW_ini
 $GDXIN
 
 * DEFINE OTHER ESSENTIAL SETS  (and create a subset for NL, which makes things go faster for checking)
 set
-S(col) list of industries  /i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12,i13,i14,i15,i16,i17,i18,i19,i20,i21,i22,i23,i24,i25,i26/
+         S(col) list of industries  /Agri,Comm,Manu,NonComm/
          rROW(reg) The region subset plus ROW for the cost estimation
-/TZA,KEN,RWA,UGA,COD,ZMB,MWI,MOZ,ROW/
+/AUS,AUT,BEL,CAN,CHL,CZE,DNK,EST,FIN,FRA,DEU,GRC,HUN,ISL,IRL,ISR,ITA,JPN,KOR,LVA,LUX,MEX,NLD,NZL,NOR,POL,PRT,SVK,SVN,ESP,SWE,CHE,TUR,GBR,USA,ARG,BGR,BRA,BRN,CHN,COL,CRI,CYP,HKG,HRV,IDN,IND,KHM,LTU,MLT,MYS,MAR,PER,PHL,ROU,RUS,SAU,SGP,THA,TUN,TWN,VNM,ZAF,ROW,MX1,MX2,MX3,CN1,CN2,CN3,CN4/
          r(rROW) The region subset used in this analysis
-/TZA,KEN,RWA,UGA,COD,ZMB,MWI,MOZ,ROW/
+/AUS,AUT,BEL,CAN,CHL,CZE,DNK,EST,FIN,FRA,DEU,GRC,HUN,ISL,IRL,ISR,ITA,JPN,KOR,LVA,LUX,MEX,NLD,NZL,NOR,POL,PRT,SVK,SVN,ESP,SWE,CHE,TUR,GBR,USA,ARG,BGR,BRA,BRN,CHN,COL,CRI,CYP,HKG,HRV,IDN,IND,KHM,LTU,MLT,MYS,MAR,PER,PHL,ROU,RUS,SAU,SGP,THA,TUN,TWN,VNM,ZAF,ROW,MX1,MX2,MX3,CN1,CN2,CN3,CN4/
          fdemand(col) final demand
-/P3h,P3n,P3g,P51,P52,P53/
+/FinDem/
          v_a(row) value added /VA/
          slctd_regions(reg) selected regions only
 ;
@@ -87,7 +87,7 @@ POSITIVE VARIABLE
 
 * BASE DATA
 FinDem(R,S) = sum((Rb,fdemand), FinDem_ini(R,S,Rb,fdemand))    ;
-ExpROW(R,S) = Z_matrix_ini(R,S,'ROW','Total') + FinDem_ini(R,S,'ROW','Total');     
+ExpROW(R,S) = ExpROW_ini(R,S,'Export');
 X.L(R,S) = sum((Rb,Sb), Z_matrix_ini(R,S,Rb,Sb)) + FinDem(R,S) + ExpROW(R,S) ;
 
 * A matrix
@@ -99,7 +99,7 @@ Xbase(R,S) = sum((Rb,Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(R,S) + ExpROW(
 
 *Value Added
 ValueA(R,S) = ValueA_ini(R,S,'VA') ;
-VAShare(R,S) =  ValueA(R,S)/Xbase(R,S);
+VAShare(R,S)$Xbase(R,S) =  ValueA(R,S)$Xbase(R,S)/Xbase(R,S);
 
 *Calculate locals
 local_Z(R,S) = sum((Sb), Amatrix(R,S,R,Sb)*X.L(R,Sb))   ;
@@ -111,16 +111,15 @@ Trade(R,Rb,S)$(ord(Rb)<>ord(R))   = sum(Sb,Z_matrix(Rb,S,R,Sb))  +sum((fdemand),
 
 *LOAD EXPORTS
 TotExp(R,S)=sum((Rb), Trade(Rb,R,S));
-Expshare(R,Rb,S)$TotExp(r,S)=Trade(R,Rb,S)/TotExp(rb,S);
 
 * LOAD IMPORTS
 TotImp(R,S)=sum((Rb), Trade(R,Rb,S));
-ImpROW(R,S) = Z_matrix_ini('ROW','Total',R,S) ;
-Importshare(R,Rb,S)=Trade(Rb,R,S)/(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S));
+
+Importshare(R,Rb,S)$(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S))=Trade(Rb,R,S)$(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S))/(sum((Sb), Amatrix(R,S,Rb,Sb)*X.L(Rb,Sb)) + FinDem(Rb,S));
 ImportshareDisImp(Rb,R,S) = Importshare(R,Rb,S)           ;
 
 
-execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade
+execute_unload 'test.gdx' X,Xbase,TotExp,LFD,ExpROW,Importshare,Trade,FinDem
 
 
 EQUATIONS
@@ -170,7 +169,7 @@ test_diff =  sum((R,S),RealDiff(R,S));
 Xdiff = sum((R,S),Xbase(R,S) - X.L(R,S));
 
 
-execute_unload 'output_EORA_TZA_ROW_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
+execute_unload 'output_TheVale_1.gdx' Demand, Xdiff, X ,RealDiff , ImportratioPar, DisImp,RationDem;
 
 EQUATIONS
          demDisRatMarg(R,S)      demand is equal to supply on the product level for every region
