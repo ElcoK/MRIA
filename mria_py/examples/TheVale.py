@@ -14,9 +14,9 @@ import os
 
 
 if __name__ == '__main__':
-
+    
     _mriapath = os.path.dirname(os.path.abspath(__file__))
-    sys.path.insert(0, _mriapath + '/../')
+    sys.path.insert(0, _mriapath + '/../../')
     
     from mria_py.core.create_table import Table
     from mria_py.core.base_model import MRIA
