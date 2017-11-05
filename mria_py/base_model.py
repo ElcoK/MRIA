@@ -7,13 +7,10 @@ This script builds the MRIA model using the EORA database as input
 
 """
 
-import os
-from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize, ConstraintList
+from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize
 import pandas as pd 
-import geopandas as gp
 from create_ratmarg import obtain_ratmarg
 from pyomo.opt import SolverFactory
-import numpy as np
 
 class MRIA(object):
 
@@ -112,7 +109,7 @@ class MRIA(object):
 
         # Specify Export ROW
         def ExpROW_ini(m,R,S):
-            return (sum(ExpROW[R,S,Rb,'Export'] for Rb in model.Rb))
+            return (ExpROW[R,S,'Export'])
         model.ExpROW = Param(model.R, model.S, initialize=ExpROW_ini, doc='Exports to the rest of the world')        
         
         # Specify Import ROW
@@ -218,12 +215,12 @@ class MRIA(object):
         model.Z_matrix = Param(model.R,model.S,model.R,model.Sb,initialize=Z_matrix_init,doc = 'Z matrix')
         self.Z_matrix = model.Z_matrix
 
-    def create_Trade(self,Z_matrix,FinalD):
+    def create_Trade(self,Z_matrix=None,FinalD=None):
         model = self.m
 
         def Trade_init(model,R,Rb,S):
             while R != Rb:
-                return sum(self.Z_matrix[Rb,S,R,i] for i in model.Sb)  + sum(FinalD[Rb,S,R,i] for i in model.fdemand) 
+                return sum(self.Z_matrix[Rb,S,R,i] for i in model.Sb)  + sum(self.FinalD[Rb,S,R,i] for i in model.fdemand) 
             
         model.trade = Param(model.R,model.Rb, model.S, initialize=Trade_init, doc='Trade')        
         self.trade = model.trade
@@ -357,13 +354,10 @@ class MRIA(object):
         self.create_X(disruption,disrupted_ctry,disrupted_sctr,Table.Z_matrix,Table.FinalD)
         self.create_VA(Table.ValueA)
         self.create_Z_mat()
-        self.create_Trade(Table.Z_matrix,Table.FinalD)
+        self.create_Trade()
         self.create_TotExp()
         self.create_TotImp()
         self.create_ImpShares()
-
-
-
 
     """ Create additional parameters and variables required for impact
     analysis """

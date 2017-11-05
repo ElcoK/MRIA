@@ -6,7 +6,6 @@ Created on Sat Nov  4 15:26:37 2017
 """
 import pandas as pd
 import numpy as np
-import os
 
 class Table(object):
 
@@ -22,6 +21,10 @@ class Table(object):
         if list_countries is not None:
             self.countries = list_countries
             self.total_countries = len(list_countries)
+        else:
+            self.countries = []
+            self.total_countries = 0
+
 
 
     def load_labels(self):
@@ -32,10 +35,14 @@ class Table(object):
 
         if 'xls' in self.file:
             FD_labels = pd.read_excel(self.file,sheetname="labels_FD",names=['reg','tfd'],header=None)
-            Exp_labels = pd.read_excel(self.file,sheetname="labels_ExpROW",names=['reg','export'],header=None)
+            Exp_labels = pd.read_excel(self.file,sheetname="labels_ExpROW",names=['export'],header=None)
             T_labels = pd.read_excel(self.file,sheetname="labels_T",header=None,names=['reg','ind'])
             VA_labels = pd.read_excel(self.file,sheetname="labels_VA",names=['Import','ValueA'],header=None)
 
+
+        if len(self.countries) == 0:
+            self.countries = list(T_labels['reg'].unique())
+            self.total_countries = len(self.countries)   
  
         self.FD_labels = FD_labels
         self.Exp_labels = Exp_labels
@@ -66,8 +73,8 @@ class Table(object):
         ExpROW_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
         T_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
 
-        reg_label = np.array(list(self.T_labels.values.T[0])+list(self.FD_labels.values.T[0])+list(self.Exp_labels.values.T[0]))
-        ind_label = np.array(list(self.T_labels.values.T[1])+list(self.FD_labels.values.T[1])+list(self.Exp_labels.values.T[1]))
+        reg_label = np.array(list(self.T_labels.values.T[0])+list(self.FD_labels.values.T[0])+['export'])
+        ind_label = np.array(list(self.T_labels.values.T[1])+list(self.FD_labels.values.T[1])+['export'])
         va_index = np.vstack((reg_label,ind_label))
     
         VA_data.index = pd.MultiIndex.from_arrays(va_index)
@@ -107,7 +114,7 @@ class Table(object):
         self.FinalD = {r + k: v for r, kv in self.FD_data.iterrows() for k,v in kv.to_dict().items()}
         self.ValueA = {r + (k,): v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
         self.ImpROW = {r + (k,): v for r, kv in self.ImpROW_data.iterrows() for k,v in kv.to_dict().items()}
-        self.ExpROW = {r + k: v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ExpROW = {r + (k,): v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
 
 
 class Table_EORA(object):
@@ -123,6 +130,10 @@ class Table_EORA(object):
         if list_countries is not None:
             self.countries = list_countries
             self.total_countries = len(list_countries)
+        else:
+            self.countries = []
+            self.total_countries = 0
+
 
 
     def load_labels(self):
@@ -138,6 +149,10 @@ class Table_EORA(object):
         VA_labels = pd.read_csv('..\input_data\labels_VA.txt', sep='\t',index_col=False,
                                 names=['Value Added','VA'])
         
+
+        if len(self.countries) == 0:
+            self.countries = list(T_labels['COUNTRY'].unique())
+            self.total_countries = len(self.countries)   
 
         """
         Convert labels to more usable format
@@ -304,11 +319,131 @@ class Table_EORA(object):
         self.A_matrix = {r + k: v for r, kv in A.iterrows() for k,v in kv.to_dict().items()}
         self.FinalD = {r + k: v for r, kv in subset_FD.iterrows() for k,v in kv.to_dict().items()}
         self.ValueA = {r + (k,): v for r, kv in VA_TZAetal.iterrows() for k,v in kv.to_dict().items()}
+
+class Table_OECD(object):
+
+    """
+    This is the class object 'EORA' which is used to set up the table.
+    """
+   
+    def __init__(self, name, filepath, year,list_countries=None):
+        
+        self.year = year
+        self.name = name
+        self.file = filepath
+        if list_countries is not None:
+            self.countries = list_countries
+            self.total_countries = len(list_countries)
+        else:
+            self.countries = []
+            self.total_countries = 0
+
+    def load_labels(self):
+
+        """
+        LOAD LABELS
+        """
+
+        if 'csv' in self.file:
+            FD_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_FD",names=['reg','tfd'],header=None)
+            Exp_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_ExpROW",names=['export'],header=None)
+            T_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_T",header=None,names=['reg','ind','reg2'])
+            VA_labels = pd.read_excel('..\input_data\ICIO_2016_2011_labels.xlsx',sheetname="labels_VA",names=['ValueA'],header=None)
+
+        """
+        Return labels to the mother class
+        """
+
+        if len(self.countries) == 0:
+            self.countries = list(T_labels['reg'].unique())
+            self.total_countries = len(self.countries)   
+
+        
+        self.FD_labels = FD_labels
+        self.Exp_labels = Exp_labels
+        self.T_labels = T_labels
+        self.VA_labels = VA_labels
+        self.sectors = list(T_labels['ind'].unique())
+        
+
+    def load_all_data(self):
+
+        try: 
+            self.FD_labels is None
+        except:
+            self.load_labels()
+
+        
+        oecd_raw = pd.read_csv(self.file,header=None)
+
+        """
+        LOAD DATA
+        """
+        FD_data = oecd_raw.iloc[:2414,2414:-1]
+        T_data  = oecd_raw.iloc[:2414,:2414]
+        VA_data = pd.DataFrame(oecd_raw.iloc[-2,:2414])
+        ExpROW_data = pd.DataFrame(oecd_raw.iloc[:2414,-1])
+
+        """
+        Add labels to the data from 'load_labels'
+        """
+        FD_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        ExpROW_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        T_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        VA_data.index = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        
+        FD_data.columns = pd.MultiIndex.from_arrays(self.FD_labels.values.T)
+        ExpROW_data.columns = pd.MultiIndex.from_arrays(self.Exp_labels.values.T)
+        T_data.columns = pd.MultiIndex.from_arrays(self.T_labels.values.T)
+        VA_data.columns= pd.MultiIndex.from_arrays(self.VA_labels.values)
+
+        """
+        Aggregate mexico and china, we don't care too much about the split ups
+        """
+        inb = T_data.groupby(level=[0,1],axis=0).sum()
+        T_data = inb.groupby(level=[0,1],axis=1).sum()        
+
+        FD_data = FD_data.groupby(level=[0,1],axis=0).sum()
+        ExpROW_data = ExpROW_data.groupby(level=[0,1],axis=0).sum()
+        VA_data = VA_data.groupby(level=[0,1],axis=0).sum() 
+
+        """
+        And return the data to the mother class
+        """
+        self.FD_data = FD_data
+        self.T_data = T_data
+        self.VA_data = pd.DataFrame(VA_data['VA'])
+        self.ExpROW_data = ExpROW_data
+
+                
+    def prep_data(self):
+
+        try: 
+            self.FD_data is None
+        except:
+            self.load_all_data()
+        
+        self.sum_data = self.T_data.sum(axis=1)+self.FD_data.sum(axis=1)+self.ExpROW_data.sum(axis=1)
+
+        self.A = self.T_data.divide(self.sum_data,axis=1)
+        
+        self.A = self.A.fillna(0)
+    
+        """
+        Return all the parts of the dataset to the class again
+        """
+        
+        self.Z_matrix = {r + k: v for r, kv in self.T_data.iterrows() for k,v in kv.to_dict().items()}
+        self.A_matrix = {r + k: v for r, kv in self.A.iterrows() for k,v in kv.to_dict().items()}
+        self.FinalD = {r + k: v for r, kv in self.FD_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ValueA = {r + (k,): v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ImpROW = {r + ('Import',): 0 for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ExpROW = {r + (k,): v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
+
+
         
 if __name__ == '__main__':
 
-    curdir = os.getcwd()
-        
     list_countries = ['TZA','KEN','RWA','UGA','COD','ZMB','MWI','MOZ']
     list_sectors = ['i'+str(n+1) for n in range(26)]
 

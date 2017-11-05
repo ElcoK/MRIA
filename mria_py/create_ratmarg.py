@@ -5,13 +5,13 @@ Created on Fri Nov  3 15:11:16 2017
 @author: cenv0574
 """
 
-import os
 import pandas as pd
 from gams import GamsWorkspace, GamsParameter
-import sys
-from create_table import Table,Table_EORA
+from create_table import Table,Table_EORA,Table_OECD
+from shutil import copyfile
 
-def load_base_db(Table,EORA=False,RoW=None):
+
+def load_base_db(table_in,EORA=False,RoW=None):
 
     '''CREATE GAMS WORKSPACE'''
     
@@ -24,21 +24,21 @@ def load_base_db(Table,EORA=False,RoW=None):
     #set regions
     reg = db.add_set("reg",1,"Regions")
     if EORA is True:
-        for r in (Table.countries+['ROW']):
+        for r in (table_in.countries+['ROW']):
             reg.add_record(r)
     else:
-        for r in (Table.countries):
+        for r in (table_in.countries):
             reg.add_record(r)        
    
     #set rowcol
     rowcol = db.add_set("rowcol",1,"All rows and columns")   
     if EORA is True:
-        industries = list(Table.sectors)  + ['Total']
-        final_demand = list(Table.FD_labels['FD'].unique())
+        industries = list(table_in.sectors)  + ['Total']
+        final_demand = list(table_in.FD_labels['FD'].unique())
 
     else:
-        industries = list(Table.sectors)  
-        final_demand = list(Table.FD_labels['tfd'].unique())
+        industries = list(table_in.sectors)  
+        final_demand = list(table_in.FD_labels['tfd'].unique())
 
     Import_lab  = ['Import']
     Export_lab  = ['Export']
@@ -67,41 +67,41 @@ def load_base_db(Table,EORA=False,RoW=None):
     
     #set FinalD
     fd_ = GamsParameter(db,"FinDem_ini", 4, "FinDem")
-    for k, v in Table.FinalD.items():
+    for k, v in table_in.FinalD.items():
         fd_.add_record(k).value = v    
     
     #set interaction matrix of intermediate demand
     z_m = db.add_parameter("Z_matrix_ini", 4, "Interaction matrix")
-    for k, v in Table.Z_matrix.items():
+    for k, v in table_in.Z_matrix.items():
         z_m.add_record(k).value = v 
     
     #set interaction matrix of intermediate demand
     a_m = db.add_parameter("A_matrix_ini", 4, "A matrix")
-    for k, v in Table.A_matrix.items():
+    for k, v in table_in.A_matrix.items():
         a_m.add_record(k).value = v 
 
-    if EORA is False:
+    if EORA is not True:
         #set Export ROW
-        exp = db.add_parameter("ExpROW_ini", 4, "Exports to ROW")
-        for k, v in Table.ExpROW.items():
+        exp = db.add_parameter("ExpROW_ini", 3, "Exports to ROW")
+        for k, v in table_in.ExpROW.items():
             exp.add_record(k).value = v 
     
     #set ValueA
     val = db.add_parameter("ValueA_ini", 3, "Value Added")
-    for k, v in Table.ValueA.items():
+    for k, v in table_in.ValueA.items():
         val.add_record(k).value = v 
         
     # And save to GDX file
-    db.export(("..\\gams_runs\\%s.gdx" % Table.name))
+    db.export(("..\\gams_runs\\%s.gdx" % table_in.name))
 
-def obtain_ratmarg(Table,EORA=False):
+def obtain_ratmarg(table_in,EORA=False):
 
     if EORA is True:
-        Table.load_subset()
-        load_base_db(Table,EORA=True)
+        table_in.load_subset()
+        load_base_db(table_in,EORA=True)
     else:
-        Table.prep_data()
-        load_base_db(Table)
+        table_in.prep_data()
+        load_base_db(table_in)
     
     '''
     RUN SCRIPT WITH DISRUPTION
@@ -110,18 +110,34 @@ def obtain_ratmarg(Table,EORA=False):
     ws = GamsWorkspace('..\\gams_runs\\')
     
     if EORA is False:
-        gamsfile = "..\\gams_runs\\obtain_marg_value_Vale.gms"
-        str_ctry = ','.join(Table.countries)    
+        gamsfile_in = "..\\gams_runs\\obtain_marg_value.gms"
+        gamsfile = "..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
+        copyfile(gamsfile_in, gamsfile)
+        str_ctry = ','.join(table_in.countries)    
+        str_fd = ','.join(list(table_in.FD_labels['tfd'].unique()))
+
     else:
-        gamsfile = "..\\gams_runs\\obtain_marg_value.gms"
-        str_ctry = ','.join(Table.countries+['ROW']) 
+        gamsfile_in = "..\\gams_runs\\obtain_marg_value_EORA.gms"
+        gamsfile = "..\\gams_runs\\obtain_marg_value_%s.gms" %(table_in.name)
+        copyfile(gamsfile_in, gamsfile)
+        str_ctry = ','.join(table_in.countries+['ROW']) 
+        str_fd = ','.join(list(table_in.FD_labels['FD'].unique()))
+
 
     with open(gamsfile, 'r') as file:
         # read a list of lines into data
         data = file.readlines()
 
+    gdx_file = "%s.gdx" % table_in.name
+    data[26] = '$GDXIN '+gdx_file+'\n'
+
+    str_ind = ','.join(table_in.sectors) 
+    data[32] ='S(col) list of industries  /'+str_ind+'/\n'
+
+
     data[34] = '/'+str_ctry+'/\n'
     data[36] = '/'+str_ctry+'/\n'
+    data[38]  = '/'+str_fd+'/\n'
 
     with open(gamsfile, 'w') as file:
         file.writelines( data )
@@ -140,7 +156,7 @@ def obtain_ratmarg(Table,EORA=False):
     Ratmarginal = pd.DataFrame(Ratmarg, index=index_).unstack()
     Ratmarginal.columns = Ratmarginal.columns.droplevel()
 
-    Ratmarginal.to_csv('..\input_data\Ratmarg_%s.csv' % Table.name)
+    Ratmarginal.to_csv('..\input_data\Ratmarg_%s.csv' % table_in.name)
 
 
     return Ratmarginal    
@@ -149,23 +165,18 @@ if __name__ == '__main__':
 
     '''Specify which countries should be included in the subset'''
 
-    list_countries = ['Elms','Hazel','Montagu','Fogwell','Riverside','Oatlands']
+#    list_countries = ['Elms','Hazel','Montagu','Fogwell','Riverside','Oatlands']
 
-    filepath = '..\input_data\The_Vale.xlsx'
-
-    # CREATE MODEL
-    TheVale = Table('TheVale',filepath,2010,list_countries)
-    
-    Ratmarginal = obtain_ratmarg(TheVale)
-
-    list_countries = ['TZA','KEN','RWA','UGA','COD','ZMB','MWI','MOZ']
-    list_sectors = ['i'+str(n+1) for n in range(26)]
+#    filepath = '..\input_data\The_Vale.xlsx'
 
     # CREATE MODEL
-    EORA_TZA = Table_EORA('EORA_TZA',2010,list_countries)
-    
-    Ratmarginal = obtain_ratmarg(EORA_TZA,EORA=True)
-    
-#    out = list(RatMarg.index.values)
-    
-#    set(list_countries) == set(out)
+#    TheVale = Table('TheVale',filepath,2010)
+#    TheVale.prep_data()
+#    load_base_db(TheVale)
+#    Ratmarginal = obtain_ratmarg(TheVale)
+
+    filepath = '..\input_data\ICIO_2016_2011.csv'
+
+    OECD = Table_OECD('OECD',filepath,2010)
+#    OECD.prep_data()
+    Ratmarginal = obtain_ratmarg(OECD)
