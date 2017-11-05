@@ -138,7 +138,6 @@ class Table_EORA(object):
             self.total_countries = 0
 
 
-
     def load_labels(self):
 
         """
@@ -212,7 +211,7 @@ class Table_EORA(object):
         self.VA_data = VA_data
 
 
-    def load_subset(self,curdir=None):
+    def prep_data(self,curdir=None):
         
         try: 
             self.FD_data is None
@@ -223,17 +222,17 @@ class Table_EORA(object):
         Create subsets for the 'list_countries'
         """
 
-        # create transaction matrix for the african subset (tanzania and surrounding countries)
+        # create transaction matrix for the subset 
         subset_T = self.T_data[self.T_data.index.get_level_values(0).isin(self.countries)]
         subset_T = subset_T.iloc[:, subset_T.columns.get_level_values(0).isin(self.countries)]
         subset_T.index.names = ['CNTRY', 'IND']
         
-        # create final demand matrix for the african subset (tanzania and surrounding countries)
+        # create final demand matrix for the subset
         subset_FD = self.FD_data[self.FD_data.index.get_level_values(0).isin(self.countries)]                    
         subset_FD = subset_FD.iloc[:, subset_FD.columns.get_level_values(0).isin(self.countries)]
         subset_FD.index.names = ['CNTRY', 'IND']
         
-        # create value added matrix for the african subset (tanzania and surrounding countries)
+        # create value added matrix for the subset
         subset_VA = self.VA_data.iloc[:, self.VA_data.columns.get_level_values(0).isin(self.countries)]
         
         # create aggregated transaction matrix for the rest of the world

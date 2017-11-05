@@ -94,22 +94,23 @@ def load_base_db(table_in,EORA=False,RoW=None):
         val.add_record(k).value = v 
         
     # And save to GDX file
-    db.export(("..\\..\\gams_runs\\%s.gdx" % table_in.name))
+    db.export(("..\\gams_runs\\%s.gdx" % table_in.name))
 
 def obtain_ratmarg(table_in,EORA=False):
 
+    table_in.prep_data()
+
     if EORA is True:
-        table_in.load_subset()
         load_base_db(table_in,EORA=True)
     else:
-        table_in.prep_data()
         load_base_db(table_in)
     
     '''
     RUN SCRIPT WITH DISRUPTION
     '''
-
-    ws = GamsWorkspace('..\\..\\gams_runs\\')
+    setdir = '..\\..\\gams_runs\\'
+    ws = GamsWorkspace(setdir)
+    ws.get_working_directory()
     
     if EORA is False:
         gamsfile_in = "..\\..\\gams_runs\\obtain_marg_value.gms"
@@ -144,7 +145,8 @@ def obtain_ratmarg(table_in,EORA=False):
     with open(gamsfile, 'w') as file:
         file.writelines( data )
     
-    t1 = ws.add_job_from_file(gamsfile)
+    gamsfile_run = gamsfile.replace("..\\..\\gams_runs\\", "")
+    t1 = ws.add_job_from_file(gamsfile_run)
     
     t1.run()
     
@@ -166,8 +168,16 @@ def obtain_ratmarg(table_in,EORA=False):
 if __name__ == '__main__':
 
     '''Specify which countries should be included in the subset'''
-
+    list_countries = ['TZA','KEN','RWA','UGA','COD','ZMB','MWI','MOZ']
 #    list_countries = ['Elms','Hazel','Montagu','Fogwell','Riverside','Oatlands']
+
+
+    '''Create table and load all data'''
+    DATA = Table_EORA('EORA_TZA',2010,list_countries)
+    DATA.prep_data()
+
+    Ratmarginal = obtain_ratmarg(DATA,EORA=True)
+    
 
 #    filepath = '..\input_data\The_Vale.xlsx'
 
@@ -177,8 +187,8 @@ if __name__ == '__main__':
 #    load_base_db(TheVale)
 #    Ratmarginal = obtain_ratmarg(TheVale)
 
-    filepath = '..\input_data\ICIO_2016_2011.csv'
+#    filepath = '..\input_data\ICIO_2016_2011.csv'
 
-    OECD = Table_OECD('OECD',filepath,2010)
+#    OECD = Table_OECD('OECD',filepath,2010)
 #    OECD.prep_data()
-    Ratmarginal = obtain_ratmarg(OECD)
+#    Ratmarginal = obtain_ratmarg(OECD)
