@@ -3,7 +3,7 @@
 Python implementation of a multiregional impact assessment model, to be used with various input-output and supply-use data sources. 
 
 
-**Requirements:** [NumPy](http://www.numpy.org/), [Pyomo](http://www.pyomo.org/), [IPOPT](https://projects.coin-or.org/Ipopt), [pandas](https://pandas.pydata.org/),[geopandas](http://geopandas.org/)
+**Requirements:** [NumPy](http://www.numpy.org/), [Pyomo](http://www.pyomo.org/), [IPOPT](https://projects.coin-or.org/Ipopt), [pandas](https://pandas.pydata.org/), [geopandas](http://geopandas.org/)
 
 **Core Paper:** [Koks and Thissen 2016](http://www.tandfonline.com/doi/full/10.1080/09535314.2016.1232701)
 
@@ -22,6 +22,7 @@ Koks, E. E., & Thissen, M. (2016). A multiregional impact assessment model for d
 * Create additional IPython Notebooks with examples.
 * Supply-use application of the model with Pyomo. Currently only working in GAMS.
 * Add supply-use example data.
+* Make it an actual python package.
 
 ### License
 Copyright (C) 2017 Elco Koks. All versions released under the [MIT license](LICENSE.md).
