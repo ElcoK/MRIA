@@ -21,8 +21,8 @@ if __name__ == '__main__':
     _mriapath = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, _mriapath + '/../../')
     
-    from mria_py.core.create_table import Table_SUT as Table
-    from mria_py.core.base_model import MRIA_SUT as MRIA
+    from mria_py.core.table import sut_basic
+    from mria_py.core.model import MRIA_SUT as MRIA
     
     ''' Specify file path '''
     filepath = '..\..\input_data\The_Vale_SUT.xlsx'
@@ -33,27 +33,21 @@ if __name__ == '__main__':
 
 
     '''Create data input'''
-    DATA = Table('TheVale_SuT',filepath,2010,list_countries)
+    DATA = sut_basic('TheVale_SuT',filepath,2010,list_countries)
     DATA.prep_data()
     
-#    test = pd.read_excel(DATA.file,sheetname="USE",header=[0])
-
-    ''' Run uncertainty analysis'''
-#    output = ua(DATA).run()
 
     '''Create model '''    
     MRIA_model = MRIA(DATA.name,DATA.countries,DATA.sectors,DATA.products)
-    MRIA_model.create_sets(FD_SET=['FinalD'])
+    MRIA_model.create_sets()
     MRIA_model.create_alias()
 
 
     '''Run model and create some output'''
     output = pd.DataFrame()
  
-#    MRIA_model.run_basemodel()
-
     '''Specify disruption'''
-    disruption = 0.95
+    disruption = 1.1
     disrupted_ctry =  ['Elms','Hazel']
     disrupted_sctr = ['Manu']
 
@@ -61,7 +55,6 @@ if __name__ == '__main__':
 
     output['x_in'] = pd.Series(MRIA_model.X.get_values())
 
-#    MRIA_model.run_basemodel()
 
     MRIA_model.impact_data(DATA,disruption,disrupted_ctry,disrupted_sctr)
     MRIA_model.run_impactmodel(output=True)
@@ -72,15 +65,15 @@ if __name__ == '__main__':
     print('A DisImp of '+str(sum(pd.Series(MRIA_model.DisImp.get_values())))+' and a Rat of '+str(sum(pd.Series(MRIA_model.Rat.get_values())))+' gives a loss of '+str(sum(output['loss']))+ ' dollar')
 
 
-#    '''And visualize it'''
-#    
-#    shape_TheVale = gp.read_file('..\\..\\input_data\\The_Vale.shp')
-#    reg_loss = pd.DataFrame(output[['loss','x_in']].groupby(level=0).sum())
-#    reg_loss['loss_rel'] = (reg_loss['loss']/reg_loss['x_in'])*100 
-#    reg_loss['Region'] = reg_loss.index
-#    
-#    reg_loss['loss'] = reg_loss['loss'].round()
-#    reg_loss['loss_rel'] = reg_loss['loss_rel'].astype((np.float16))
-#
-#    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
-#    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 
+    '''And visualize it'''
+    
+    shape_TheVale = gp.read_file('..\\..\\input_data\\The_Vale.shp')
+    reg_loss = pd.DataFrame(output[['loss','x_in']].groupby(level=0).sum())
+    reg_loss['loss_rel'] = (reg_loss['loss']/reg_loss['x_in'])*100 
+    reg_loss['Region'] = reg_loss.index
+    
+    reg_loss['loss'] = reg_loss['loss'].round()
+    reg_loss['loss_rel'] = reg_loss['loss_rel'].astype((np.float16))
+
+    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
+    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 
