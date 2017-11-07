@@ -11,7 +11,7 @@ This script builds the MRIA model
 from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize
 import pandas as pd 
 from pyomo.opt import SolverFactory
-from mria_py.core.run_gams import ratmarg_IO,ratmarg_SUT
+from mria_py.core.gams import ratmarg_IO,ratmarg_SUT
 
 
 class MRIA_IO(object):
@@ -23,7 +23,7 @@ class MRIA_IO(object):
     constraints and objectives for different model setups.
     """
     
-    def __init__(self, name, list_countries,list_sectors,EORA=False):
+    def __init__(self, name, list_countries,list_sectors,list_fd_cats,EORA=False):
  
         """
         Creation of a Concrete Model, specify the countries and sectors
@@ -34,6 +34,7 @@ class MRIA_IO(object):
         self.countries = list_countries
         self.total_countries = len(list_countries)
         self.sectors = list_sectors
+        self.fd_cat = list_fd_cats
         if EORA is True:
             self.EORA = True
         else:
@@ -58,7 +59,7 @@ class MRIA_IO(object):
         if self.EORA is True:
             self.m.fdemand = Set(initialize=['P3h', 'P3n','P3g', 'P51','P52','P53'], doc='Final Demand')
         else:
-            self.m.fdemand = Set(initialize=FD_SET, doc='Final Demand')
+            self.m.fdemand = Set(initialize=self.fd_cat, doc='Final Demand')
 
         if self.EORA is True:
             self.m.VA = Set(initialize=['VA'], doc='value added')
@@ -399,7 +400,7 @@ class MRIA_IO(object):
         #sends results to stdout
         results.write()
 
-    def run_impactmodel(self,solver=None,tol=None,output=None,DisWeight=None,RatWeight=None):
+    def run_impactmodel(self,solver=None,output=None,tol=1e-6,DisWeight=1.75,RatWeight=2):
         model = self.m
 
         if solver is None:
@@ -441,7 +442,7 @@ class MRIA_IO(object):
         def ObjectiveDis2(model):
             return (
                 sum(self.X[R,S] for S in model.S for R in model.R)
-#                + DisWeight*sum((self.Ratmarg[R,S]*self.DisImp[R,S]) for R in model.R for S in model.S)
+                + DisWeight*sum((self.Ratmarg[R,S]*self.DisImp[R,S]) for R in model.R for S in model.S)
                 + RatWeight*sum((self.Ratmarg[R,S]*self.Rat[R,S]) for R in model.R for S in model.S)
                 + sum((sum(self.ImportShare[R,Rb,S]*(sum(self.A_matrix[R,S,Rb,Sb]*self.X[Rb,Sb] for Sb in model.Sb) + self.fd[Rb,S] + self.Rdem[Rb,S] - self.Rat[Rb,S]) for Rb in model.Rb if (R != Rb))
                 +  sum(self.ImportShare[R,Rb,S]*(self.DisImp[Rb,S]) for Rb in model.Rb if (R != Rb))) for R in model.R for S in model.S)
@@ -456,9 +457,7 @@ class MRIA_IO(object):
             opt.options['warm_start_bound_push'] = 1e-6
             opt.options['warm_start_mult_bound_push'] = 1e-6
             opt.options['mu_init'] = 1e-6
-            if tol is None:
-                opt.options['tol'] = 1e-6
-            else:
+            if tol != 1e-6:
                 opt.options['tol'] = tol
             
         if output is None:
@@ -496,7 +495,7 @@ class MRIA_SUT(object):
         else:
             self.EORA = False
    
-    def create_sets(self,FD_SET=[],VA_SET=[]):
+    def create_sets(self,FD_SET=['FinalD'],VA_SET=['VA']):
 
         """
         Creation of the various sets. First step in future-proofing by allowing
@@ -720,7 +719,7 @@ class MRIA_SUT(object):
         model = self.m
 
         try:
-            RatMarg = pd.read_csv('..\..\input_data\Ratmarg_%s.csv' % Table.name, index_col =[0],header=0)
+            RatMarg = pd.read_csv('..\..\input_data\Ratmarg_Vale_SuT.csv', index_col =[0],header=0)
             if (set(list(RatMarg.index.values)) != set(list(self.countries))):
                 RatMarg = ratmarg_SUT(Table)
         except:

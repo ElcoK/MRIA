@@ -36,6 +36,7 @@ if __name__ == '__main__':
     DATA = Table('TheVale_SuT',filepath,2010,list_countries)
     DATA.prep_data()
     
+#    test = pd.read_excel(DATA.file,sheetname="USE",header=[0])
 
     ''' Run uncertainty analysis'''
 #    output = ua(DATA).run()
@@ -52,8 +53,8 @@ if __name__ == '__main__':
 #    MRIA_model.run_basemodel()
 
     '''Specify disruption'''
-    disruption = 0.9
-    disrupted_ctry =  ['Elms']
+    disruption = 0.95
+    disrupted_ctry =  ['Elms','Hazel']
     disrupted_sctr = ['Manu']
 
     MRIA_model.baseline_data(DATA,disruption,disrupted_ctry,disrupted_sctr) 
@@ -64,21 +65,22 @@ if __name__ == '__main__':
 
     MRIA_model.impact_data(DATA,disruption,disrupted_ctry,disrupted_sctr)
     MRIA_model.run_impactmodel(output=True)
-  
+    
     output['x_out'] = pd.Series(MRIA_model.X.get_values())
     output['loss'] = output['x_out'] - output['x_in']
 
-    print(sum(output['loss']))
+    print('A DisImp of '+str(sum(pd.Series(MRIA_model.DisImp.get_values())))+' and a Rat of '+str(sum(pd.Series(MRIA_model.Rat.get_values())))+' gives a loss of '+str(sum(output['loss']))+ ' dollar')
 
-    '''And visualize it'''
-    
-    shape_TheVale = gp.read_file('..\\..\\input_data\\The_Vale.shp')
-    reg_loss = pd.DataFrame(output[['loss','x_in']].groupby(level=0).sum())
-    reg_loss['loss_rel'] = (reg_loss['loss']/reg_loss['x_in'])*100 
-    reg_loss['Region'] = reg_loss.index
-    
-    reg_loss['loss'] = reg_loss['loss'].round()
-    reg_loss['loss_rel'] = reg_loss['loss_rel'].astype((np.float16))
 
-    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
-    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 
+#    '''And visualize it'''
+#    
+#    shape_TheVale = gp.read_file('..\\..\\input_data\\The_Vale.shp')
+#    reg_loss = pd.DataFrame(output[['loss','x_in']].groupby(level=0).sum())
+#    reg_loss['loss_rel'] = (reg_loss['loss']/reg_loss['x_in'])*100 
+#    reg_loss['Region'] = reg_loss.index
+#    
+#    reg_loss['loss'] = reg_loss['loss'].round()
+#    reg_loss['loss_rel'] = reg_loss['loss_rel'].astype((np.float16))
+#
+#    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
+#    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 

@@ -5,9 +5,11 @@ Created on Sun Nov  5 14:43:30 2017
 @author: elcok
 """
 
-__all__ = ['base_model','create_table','create_ratmarg','visualize']
+__all__ = ['model','table','gams','visualize','uncertainty','basics']
 
-from mria_py.core import base_model
-from mria_py.core import create_table
-from mria_py.core import create_ratmarg
+from mria_py.core import model
+from mria_py.core import table
+from mria_py.core import gams
 from mria_py.core import visualize
+from mria_py.core import basics
+from mria_py.core import uncertainty

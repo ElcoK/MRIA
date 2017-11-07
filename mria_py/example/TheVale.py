@@ -21,11 +21,10 @@ if __name__ == '__main__':
     _mriapath = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, _mriapath + '/../../')
     
-    from mria_py.core.create_table import Table
-    from mria_py.core.base_model import MRIA_IO as MRIA
+    from mria_py.core.table import io_basic
+    from mria_py.core.model import MRIA_IO as MRIA
     from mria_py.core.visualize import visualize
-    from mria_py.core.basic_IO import basic_IO
-    from mria_py.core.ua import ua
+    from mria_py.core.basics import basic_IO
     
     ''' Specify file path '''
     filepath = '..\..\input_data\The_Vale.xlsx'
@@ -36,21 +35,17 @@ if __name__ == '__main__':
 
 
     '''Create data input'''
-    DATA = Table('TheVale',filepath,2010,list_countries)
+    DATA = io_basic('TheVale',filepath,2010,list_countries)
     DATA.prep_data()
     
     '''Look at the data to see if it makes sense'''
-#    visualize(DATA).heatmap()
+    visualize(DATA).heatmap()
     
     '''Check if table is balanced'''
     basic_IO(DATA).check_table()
-
-
-    ''' Run uncertainty analysis'''
-#    output = ua(DATA).run()
-
+    
     '''Create model '''    
-    MRIA_model = MRIA(DATA.name,list_countries,DATA.sectors)
+    MRIA_model = MRIA(DATA.name,list_countries,DATA.sectors,DATA.FD_cat)
     MRIA_model.create_sets(FD_SET=['FinDem'])
     MRIA_model.create_alias()
 
@@ -58,10 +53,8 @@ if __name__ == '__main__':
     '''Run model and create some output'''
     output = pd.DataFrame()
  
-#    MRIA_model.run_basemodel()
-
     '''Specify disruption'''
-    disruption = 0.95
+    disruption = 1.1
     disrupted_ctry =  ['Elms','Hazel']
     disrupted_sctr = ['Manu']
 
@@ -69,10 +62,8 @@ if __name__ == '__main__':
 
     output['x_in'] = pd.Series(MRIA_model.X.get_values())
 
-#    MRIA_model.run_basemodel()
-
     MRIA_model.impact_data(DATA,disruption,disrupted_ctry,disrupted_sctr)
-    MRIA_model.run_impactmodel()
+    MRIA_model.run_impactmodel(DisWeight=1.75,RatWeight=2)
   
     output['x_out'] = pd.Series(MRIA_model.X.get_values())
     output['loss'] = output['x_out'] - output['x_in']
@@ -88,6 +79,6 @@ if __name__ == '__main__':
     
     reg_loss['loss'] = reg_loss['loss'].round()
     reg_loss['loss_rel'] = reg_loss['loss_rel'].astype((np.float16))
-#
-#    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
-#    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 
+
+    reg_shap = pd.merge(shape_TheVale, reg_loss, on='Region', how='inner')
+    reg_shap.plot(column='loss', cmap='OrRd', legend=True) 

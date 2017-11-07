@@ -6,7 +6,6 @@ Created on Sun Nov  5 15:55:43 2017
 """
 import seaborn as sns
 import pandas as pd
-from mria_py.core.create_table import Table
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -63,21 +62,4 @@ class visualize(object):
                     return self.data.FD_data.sum().xs(region,level=0).plot.bar()            
 
             
-if __name__ == '__main__':
-
-
-    ''' Specify file path '''
-    filepath = '..\..\input_data\The_Vale.xlsx'
-
-    '''Specify which countries should be included in the subset'''
-
-    list_countries = ['Elms','Hazel','Montagu','Fogwell','Riverside','Oatlands']
-
-
-    '''Create data input'''
-    data = Table('TheVale',filepath,2010)
-    data.prep_data()
-    
-    visualize(data).barplot(table_part='Z',region='all',industry='Agri')
-    
 
