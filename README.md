@@ -17,11 +17,9 @@ Koks, E. E., & Thissen, M. (2016). A multiregional impact assessment model for d
 * Economic Impacts of Irrigation-Constrained Agriculture in the Lower Po Basin ([Pérez-Blanco et al. 2017](http://www.worldscientific.com/doi/abs/10.1142/S2382624X17500035))
 
 ### Work in progress:
-* Add compatibility with other openly available MRIO and IRIO data sources.
-* Add uncertainty and sensitivity analysis of the model.
+* Add compatibility with more openly available MRIO and IRIO data sources.
+* Improve uncertainty and sensitivity analysis of the model.
 * Create additional IPython Notebooks with examples.
-* Supply-use application of the model with Pyomo. Currently only working in GAMS.
-* Add supply-use example data.
 * Make it an actual python package.
 
 ### License
