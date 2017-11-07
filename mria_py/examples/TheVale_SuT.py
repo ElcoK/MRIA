@@ -21,14 +21,11 @@ if __name__ == '__main__':
     _mriapath = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, _mriapath + '/../../')
     
-    from mria_py.core.create_table import Table
-    from mria_py.core.base_model import MRIA_IO as MRIA
-    from mria_py.core.visualize import visualize
-    from mria_py.core.basic_IO import basic_IO
-    from mria_py.core.ua import ua
+    from mria_py.core.create_table import Table_SUT as Table
+    from mria_py.core.base_model import MRIA_SUT as MRIA
     
     ''' Specify file path '''
-    filepath = '..\..\input_data\The_Vale2.xlsx'
+    filepath = '..\..\input_data\The_Vale_SUT.xlsx'
 
     '''Specify which countries should be included in the subset'''
 
@@ -36,22 +33,16 @@ if __name__ == '__main__':
 
 
     '''Create data input'''
-    DATA = Table('TheVale',filepath,2010,list_countries)
+    DATA = Table('TheVale_SuT',filepath,2010,list_countries)
     DATA.prep_data()
     
-    '''Look at the data to see if it makes sense'''
-#    visualize(DATA).heatmap()
-    
-    '''Check if table is balanced'''
-    basic_IO(DATA).check_table()
-
 
     ''' Run uncertainty analysis'''
 #    output = ua(DATA).run()
 
     '''Create model '''    
-    MRIA_model = MRIA(DATA.name,list_countries,DATA.sectors)
-    MRIA_model.create_sets(FD_SET=['FinDem'])
+    MRIA_model = MRIA(DATA.name,DATA.countries,DATA.sectors,DATA.products)
+    MRIA_model.create_sets(FD_SET=['FinalD'])
     MRIA_model.create_alias()
 
 
@@ -61,7 +52,7 @@ if __name__ == '__main__':
 #    MRIA_model.run_basemodel()
 
     '''Specify disruption'''
-    disruption = 0.97
+    disruption = 0.9
     disrupted_ctry =  ['Elms']
     disrupted_sctr = ['Manu']
 

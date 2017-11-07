@@ -443,6 +443,60 @@ class Table_OECD(object):
         self.ExpROW = {r + (k,): v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
 
 
+class Table_SUT(object):
+
+    """
+    This is the class object 'EORA' which is used to set up the table.
+    """
+   
+    def __init__(self, name,filepath,year,list_countries=None):
+        
+        self.year = year
+        self.name = name
+        self.file = filepath
+        if list_countries is not None:
+            self.countries = list_countries
+            self.total_countries = len(list_countries)
+        else:
+            self.countries = []
+            self.total_countries = 0
+
+
+
+    def load_all_data(self):
+        
+        """
+        LOAD DATA
+        """
+        self.Use_data = pd.read_excel(self.file,sheetname="USE",index_col=[0,1],header=[0,1])
+        self.Sup_data  = pd.read_excel(self.file,sheetname="SUP",index_col=[0,1],header=[0,1])
+        self.VA_data = pd.read_excel(self.file,sheetname="VA",index_col=[0,1],header=[0])
+        self.ExpROW_data = pd.read_excel(self.file,sheetname="ExpROW",index_col=[0,1],header=[0])
+        self.ImpROW_data = pd.read_excel(self.file,sheetname="ImpROW",index_col=[0,1],header=[0])
+
+        """
+        Extract indices
+        """
+        self.countries = list(set(list(self.Use_data.index.get_level_values(0))))
+        self.sectors = list(set(list(self.Sup_data.index.get_level_values(1))))
+        self.products = list(set(list(self.Use_data.index.get_level_values(1))))
+
+    def prep_data(self):
+
+        try: 
+            self.FD_data is None
+        except:
+            self.load_all_data()
+   
+        """
+        Return all the parts of the dataset to the class again
+        """
+        self.Use = {r + k: v for r, kv in self.Use_data.iterrows() for k,v in kv.to_dict().items()}
+        self.Sup = {r + k: v for r, kv in self.Sup_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ValueA = {r + (k,): v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ImpROW = {r + (k,): v for r, kv in self.ImpROW_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ExpROW = {r + (k,): v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
+
         
 if __name__ == '__main__':
 
