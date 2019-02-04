@@ -277,6 +277,7 @@ def ratmarg_IO(table_in,EORA=False):
         file.writelines( data )
     
     gamsfile_run = gamsfile.replace("..\\..\\gams_runs\\", "")
+    print(gamsfile_run)
     t1 = ws.add_job_from_file(gamsfile_run)
     
     t1.run()

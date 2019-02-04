@@ -10,6 +10,7 @@ This script builds the MRIA model
 
 from pyomo.environ import ConcreteModel,Set,SetOf,Param,Var,Constraint,Objective,minimize
 import pandas as pd 
+import numpy as np
 from pyomo.opt import SolverFactory
 from mria_py.core.gams import ratmarg_IO,ratmarg_SUT
 
@@ -23,7 +24,7 @@ class MRIA_IO(object):
     constraints and objectives for different model setups.
     """
     
-    def __init__(self, name, list_countries,list_sectors,list_fd_cats,EORA=False):
+    def __init__(self, name, list_countries,list_sectors,EORA=False,list_fd_cats=[]):
  
         """
         Creation of a Concrete Model, specify the countries and sectors
@@ -88,13 +89,32 @@ class MRIA_IO(object):
         self.A_matrix = model.A_matrix
 
     ''' Specify Final Demand and Local Final Demand'''
-    def create_FD(self,FinalD):
+    def create_FD(self,FinalD,disr_dict_fd):
+        
+        disrupted_org = list(np.unique([x[0] for x in disr_dict_fd]))
+        disrupted_des = list(np.unique([x[1] for x in disr_dict_fd]))
+        disrupted_sctr = [x[2] for x in disr_dict_fd]
+        
         model = self.m
+        
+        model.Rdes = Set(initialize=disrupted_des, doc='Final Demand')
+        
+        def tfd_init(model,R,S,Rb):
+            if (R in disrupted_org) & (Rb in disrupted_des) & (S in disrupted_sctr):
+#                print(disr_dict_fd[R,Rb,S])
+                return sum(FinalD[R,S,Rb,fdemand] for fdemand in model.fdemand)*disr_dict_fd[R,Rb,S]
+            else:
+                return sum(FinalD[R,S,Rb,fdemand] for fdemand in model.fdemand)
+
         def fd_init(model,R,S):
-            return sum(FinalD[R,S,Rb,fdemand] for Rb in model.Rb for fdemand in model.fdemand)
+                return sum(model.tfd[R,S,Rb] for Rb in model.Rb)
+                
      
+        model.tfd = Param(model.R, model.S,model.Rb, initialize=tfd_init, doc='Final Demand')
+        
         model.fd = Param(model.R, model.S, initialize=fd_init, doc='Final Demand')
 
+        self.ttfd = model.tfd
         self.fd = model.fd
         
     ''' Specify local final demand '''
@@ -141,12 +161,15 @@ class MRIA_IO(object):
 
 
     """ Specify X variables """
-    def create_X_up(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=0.98):
+    def create_X_up(self,disr_dict,Regmaxcap=0.98):
         model = self.m
+
+        disrupted_ctry = list(np.unique([x[0] for x in disr_dict]))
+        disrupted_sctr = [x[1] for x in disr_dict]
 
         def shock_init(model, R,S):
             if R in disrupted_ctry and S in disrupted_sctr:
-                return 1/Regmaxcap*disruption
+                return 1/Regmaxcap*disr_dict[R,S]
             else:
                 return 1/Regmaxcap*1.1       
                
@@ -154,11 +177,11 @@ class MRIA_IO(object):
         self.X_up = model.X_up
 
     '''create Xbase'''
-    def create_Xbase(self,Z_matrix,FinalD=None):
+    def create_Xbase(self,Z_matrix,disr_dict,FinalD=None):
         model = self.m
 
         if self.fd.active is not True:
-            self.create_FD(FinalD)
+            self.create_FD(FinalD,disr_dict)
 
         if self.ExpROW.active is not True:
             self.create_ExpImp(Z_matrix)
@@ -171,8 +194,11 @@ class MRIA_IO(object):
         self.Xbase = model.Xbase
 
     '''create X'''
-    def create_X(self,disruption,disrupted_ctry,disrupted_sctr,Regmaxcap=0.98,
+    def create_X(self,disr_dict,Regmaxcap=0.98,
                  A_matrix_ini=None,Z_matrix=None,FinalD=None,Xbase=None,fd=None,ExpROW=None):
+
+        disrupted_ctry = list(np.unique([x[0] for x in disr_dict]))
+        disrupted_sctr = [x[1] for x in disr_dict]
 
         model = self.m
 
@@ -184,7 +210,7 @@ class MRIA_IO(object):
 
         def X_bounds(model, R,S):
             if R in disrupted_ctry and S in disrupted_sctr:
-                return (0.0, (1/Regmaxcap*self.Xbase[R,S])*disruption)
+                return (0.0, (1/Regmaxcap*self.Xbase[R,S])*disr_dict[R,S])
             else:
                 return (0.0, (1/Regmaxcap*self.Xbase[R,S])*1.1)
 
@@ -251,9 +277,11 @@ class MRIA_IO(object):
     def create_ImpShares(self):
         model = self.m
         def impsh_init(model, R, Rb, S):
-            while self.trade[Rb,R,S] != None:
-                return self.trade[Rb,R,S]/(sum(self.A_matrix[R,S,Rb,Sb]*self.X[Rb,Sb] for Sb in model.Sb) + self.fd[Rb,S])
-                
+            while (self.trade[Rb, R, S] != None):
+                try:
+                    return self.trade[Rb, R, S]/(sum(self.A_matrix[R, S, Rb, Sb]*self.X[Rb, Sb] for Sb in model.Sb) + self.fd[Rb, S])
+                except ZeroDivisionError:
+                    return 0                
         model.ImportShare = Param(model.R, model.Rb, model.S,initialize=impsh_init,doc='Importshare of each region')
         model.ImportShareDisImp = Param(model.R, model.Rb,model.S,initialize=impsh_init,doc='Importshare DisImp of each region')
 
@@ -302,8 +330,10 @@ class MRIA_IO(object):
         self.Ratmarg = model.Ratmarg
 
     '''Disaster import variable'''
-    def create_DisImp(self,disrupted_ctry,Regmaxcap=0.98):
+    def create_DisImp(self,disr_dict,Regmaxcap=0.98):
         model = self.m
+
+        disrupted_ctry = list(np.unique([x[0] for x in disr_dict]))
 
         #problem regions
         dimp_ctry = ['KEN','UGA']
@@ -336,7 +366,7 @@ class MRIA_IO(object):
         self.Demand = model.Demand
 
     """ Create baseline dataset to use in model """
-    def baseline_data(self,Table,disruption=1.1,disrupted_ctry=[],disrupted_sctr=[],EORA=None):
+    def baseline_data(self,Table,disr_dict_sup,disr_dict_fd,EORA=None):
 
         if self.EORA is True:
             self.create_ExpImp_EORA(Table.Z_matrix)
@@ -344,10 +374,10 @@ class MRIA_IO(object):
             self.create_ExpImp(Table.ExpROW,Table.ImpROW)
 
         self.create_A_mat(Table.A_matrix)
-        self.create_FD(Table.FinalD)
+        self.create_FD(Table.FinalD,disr_dict_fd)
         self.create_LFD(Table.FinalD)
-        self.create_Xbase(Table.Z_matrix,Table.FinalD)
-        self.create_X(disruption,disrupted_ctry,disrupted_sctr,Z_matrix=Table.Z_matrix,FinalD = Table.FinalD)
+        self.create_Xbase(Table.Z_matrix,Table.FinalD,disr_dict_fd)
+        self.create_X(disr_dict_sup,Z_matrix=Table.Z_matrix,FinalD = Table.FinalD)
         self.create_VA(Table.ValueA)
         self.create_Z_mat()
         self.create_Trade(Table.FinalD)
@@ -357,14 +387,16 @@ class MRIA_IO(object):
 
     """ Create additional parameters and variables required for impact
     analysis """
-    def impact_data(self,Table,disruption=1.1,disrupted_ctry=[],disrupted_sctr=[],Regmaxcap=0.98):
+    
+    
+    def impact_data(self,Table,disr_dict_sup,disr_dict_fd,Regmaxcap=0.98):
 
         
-        self.create_X_up(disruption,disrupted_ctry,disrupted_sctr)
+        self.create_X_up(disr_dict_sup)
         self.create_Rdem()
         self.create_Rat(Table.FinalD,Table.Z_matrix)
         self.create_Ratmarg(Table)
-        self.create_DisImp(disrupted_ctry)
+        self.create_DisImp(disr_dict_sup)
         self.create_demand()
 
     """

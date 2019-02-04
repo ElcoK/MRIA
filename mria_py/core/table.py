@@ -15,7 +15,7 @@ class io_basic(object):
     """
     This is the class object 'EORA' which is used to set up the table.
     """
-   
+  
     def __init__(self, name,filepath,year,list_countries=None):
         
         self.year = year
@@ -29,7 +29,6 @@ class io_basic(object):
             self.total_countries = 0
 
 
-
     def load_labels(self):
 
         """
@@ -37,10 +36,10 @@ class io_basic(object):
         """
 
         if 'xls' in self.file:
-            FD_labels = pd.read_excel(self.file,sheetname="labels_FD",names=['reg','tfd'],header=None)
-            Exp_labels = pd.read_excel(self.file,sheetname="labels_ExpROW",names=['export'],header=None)
-            T_labels = pd.read_excel(self.file,sheetname="labels_T",header=None,names=['reg','ind'])
-            VA_labels = pd.read_excel(self.file,sheetname="labels_VA",names=['Import','ValueA'],header=None)
+            FD_labels = pd.read_excel(self.file,sheet_name="labels_FD",names=['reg','tfd'],header=None)
+            Exp_labels = pd.read_excel(self.file,sheet_name="labels_ExpROW",names=['export'],header=None)
+            T_labels = pd.read_excel(self.file,sheet_name="labels_T",header=None,names=['reg','ind'])
+            VA_labels = pd.read_excel(self.file,sheet_name="labels_VA",names=['Import','ValueA'],header=None)
 
 
         if len(self.countries) == 0:
@@ -65,10 +64,10 @@ class io_basic(object):
         """
         LOAD DATA
         """
-        FD_data = pd.read_excel(self.file,sheetname="FD",header=None)
-        T_data  = pd.read_excel(self.file,sheetname="T",header=None)
-        VA_data = pd.read_excel(self.file,sheetname="VA",header=None)
-        ExpROW_data = pd.read_excel(self.file,sheetname="ExpROW",header=None)
+        FD_data = pd.read_excel(self.file,sheet_name="FD",header=None)
+        T_data  = pd.read_excel(self.file,sheet_name="T",header=None)
+        VA_data = pd.read_excel(self.file,sheet_name="VA",header=None)
+        ExpROW_data = pd.read_excel(self.file,sheet_name="ExpROW",header=None)
 
         """
         Add labels to the data from 'load_labels'
@@ -108,7 +107,7 @@ class io_basic(object):
         self.sum_data = self.T_data.sum(axis=1)+self.FD_data.sum(axis=1)+self.ExpROW_data.sum(axis=1)
 
         self.A = self.T_data.divide(self.sum_data,axis=1)
-    
+        
         """
         Return all the parts of the dataset to the class again
         """
@@ -116,9 +115,9 @@ class io_basic(object):
         self.Z_matrix = {r + k: v for r, kv in self.T_data.iterrows() for k,v in kv.to_dict().items()}
         self.A_matrix = {r + k: v for r, kv in self.A.iterrows() for k,v in kv.to_dict().items()}
         self.FinalD = {r + k: v for r, kv in self.FD_data.iterrows() for k,v in kv.to_dict().items()}
-        self.ValueA = {r + (k,): v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
-        self.ImpROW = {r + (k,): v for r, kv in self.ImpROW_data.iterrows() for k,v in kv.to_dict().items()}
-        self.ExpROW = {r + (k,): v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ValueA = {r + k: v for r, kv in self.VA_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ImpROW = {r + k: v for r, kv in self.ImpROW_data.iterrows() for k,v in kv.to_dict().items()}
+        self.ExpROW = {r + k: v for r, kv in self.ExpROW_data.iterrows() for k,v in kv.to_dict().items()}
 
 
 class io_eora(object):
@@ -148,7 +147,7 @@ class io_eora(object):
         FD_labels = pd.read_csv('..\..\input_data\labels_FD.txt', sep='\t',index_col=False, 
                                 names=['COUNTRY','CNTRY_CODE','Final Demand','FD'])
         T_labels = pd.read_csv('..\..\input_data\labels_T.txt', sep='\t',index_col=False,
-                               names=['COUNTRY','CNTRY_CODE','Industries','IND'])
+                               names=['COUNTRY','CNTRY_CODE','Industries','SEC'])
         VA_labels = pd.read_csv('..\..\input_data\labels_VA.txt', sep='\t',index_col=False,
                                 names=['Value Added','VA'])
         
@@ -169,7 +168,7 @@ class io_eora(object):
 
         # For each of the sectors        
         new_T = ['i'+str(n+1) for n in range(26)]
-        T_to_replace = dict(zip(T_labels['IND'].unique(),new_T))
+        T_to_replace = dict(zip(T_labels['SEC'].unique(),new_T))
     
         T_labels.replace(T_to_replace,inplace=True)
 
@@ -189,9 +188,9 @@ class io_eora(object):
         """
         LOAD DATA
         """
-        FD_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_FD.txt' % self.year, sep='\t',index_col=False,header=None)/1000
-        T_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_T.txt' % self.year, sep='\t',index_col=False,header=None)/1000
-        VA_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_VA.txt' % self.year, sep='\t',index_col=False,header=None)/1000
+        FD_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_FD.txt' % self.year, sep='\t',index_col=False,header=None)/1e6
+        T_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_T.txt' % self.year, sep='\t',index_col=False,header=None)/1e6
+        VA_data = pd.read_csv('..\..\input_data\Eora26_%s_bp_VA.txt' % self.year, sep='\t',index_col=False,header=None)/1e6
 
         """
         Add labels to the data from 'load_labels'
@@ -226,12 +225,12 @@ class io_eora(object):
         # create transaction matrix for the subset 
         subset_T = self.T_data[self.T_data.index.get_level_values(0).isin(self.countries)]
         subset_T = subset_T.iloc[:, subset_T.columns.get_level_values(0).isin(self.countries)]
-        subset_T.index.names = ['CNTRY', 'IND']
+        subset_T.index.names = ['CNTRY', 'SEC']
         
         # create final demand matrix for the subset
         subset_FD = self.FD_data[self.FD_data.index.get_level_values(0).isin(self.countries)]                    
         subset_FD = subset_FD.iloc[:, subset_FD.columns.get_level_values(0).isin(self.countries)]
-        subset_FD.index.names = ['CNTRY', 'IND']
+        subset_FD.index.names = ['CNTRY', 'SEC']
         
         # create value added matrix for the subset
         subset_VA = self.VA_data.iloc[:, self.VA_data.columns.get_level_values(0).isin(self.countries)]
@@ -244,7 +243,7 @@ class io_eora(object):
         T_row = T_row.set_index('ROW',append=True,drop=True)
         T_row = T_row.reorder_levels([1,0], axis=0)
         T_row.columns = pd.MultiIndex.from_product([['ROW'],T_row.columns])
-        T_row.index.names = ['CNTRY', 'IND']
+        T_row.index.names = ['CNTRY', 'SEC']
         
         # create aggregated transaction import matrix for the rest of the world
         ImpTrade_ROW = self.T_data.iloc[~self.T_data.index.get_level_values(0).isin(self.countries),self.T_data.columns.get_level_values(0).isin(self.countries)]
@@ -253,13 +252,13 @@ class io_eora(object):
         ImpTrade_ROW[('ROW','ROW')] = 'ROW'
         ImpTrade_ROW = ImpTrade_ROW.set_index(('ROW','ROW'),append=True,drop=True)
         ImpTrade_ROW = ImpTrade_ROW.reorder_levels([1,0], axis=0)
-        ImpTrade_ROW.index.names = ['CNTRY', 'IND']
+        ImpTrade_ROW.index.names = ['CNTRY', 'SEC']
         
         # create aggregated transaction export matrix for the rest of the world
         ExpTrade_ROW = self.T_data.iloc[self.T_data.index.get_level_values(0).isin(self.countries),~self.T_data.columns.get_level_values(0).isin(self.countries)]
         ExpTrade_ROW= ExpTrade_ROW.groupby(level=[1],axis=1).sum()
         ExpTrade_ROW.columns = pd.MultiIndex.from_product([['ROW'],ExpTrade_ROW.columns])
-        ExpTrade_ROW.index.names = ['CNTRY', 'IND']
+        ExpTrade_ROW.index.names = ['CNTRY', 'SEC']
         
         # create aggregated final demand matrix for the rest of the world
         FD_row = self.FD_data.iloc[~self.FD_data.index.get_level_values(0).isin(self.countries), ~self.FD_data.columns.get_level_values(0).isin(self.countries)]
@@ -269,7 +268,7 @@ class io_eora(object):
         FD_row = FD_row.set_index('ROW',append=True,drop=True)
         FD_row = FD_row.reorder_levels([1,0], axis=0)
         FD_row.columns = pd.MultiIndex.from_product([['ROW'],FD_row.columns])
-        FD_row.index.names = ['CNTRY', 'IND']
+        FD_row.index.names = ['CNTRY', 'SEC']
         
         # create aggregated final demand import matrix for the rest of the world
         ImpFD_ROW = self.FD_data.iloc[~self.FD_data.index.get_level_values(0).isin(self.countries),self.FD_data.columns.get_level_values(0).isin(self.countries)]
@@ -278,13 +277,13 @@ class io_eora(object):
         ImpFD_ROW[('ROW','ROW')] = 'ROW'
         ImpFD_ROW = ImpFD_ROW.set_index(('ROW','ROW'),append=True,drop=True)
         ImpFD_ROW = ImpFD_ROW.reorder_levels([1,0], axis=0)
-        ImpFD_ROW.index.names = ['CNTRY', 'IND']
+        ImpFD_ROW.index.names = ['CNTRY', 'SEC']
         
         # create aggregated final demand export matrix for the rest of the world
         ExpFD_ROW = self.FD_data.iloc[self.FD_data.index.get_level_values(0).isin(self.countries),~self.FD_data.columns.get_level_values(0).isin(self.countries)]
         ExpFD_ROW= ExpFD_ROW.groupby(level=[1],axis=1).sum()
         ExpFD_ROW.columns = pd.MultiIndex.from_product([['ROW'],ExpFD_ROW.columns])
-        ExpFD_ROW.index.names = ['CNTRY', 'IND']
+        ExpFD_ROW.index.names = ['CNTRY', 'SEC']
         
         # create aggregated value added matrix for the rest of the world
         VA_row = self.VA_data.iloc[:,~ self.VA_data.columns.get_level_values(0).isin(self.countries)]
@@ -292,34 +291,38 @@ class io_eora(object):
         VA_row.columns = pd.MultiIndex.from_product([['ROW'],VA_row.columns])
         
         # combine matrices to have a new transaction matrix
-        df1 = ImpTrade_ROW.reset_index().join(T_row,on=['CNTRY', 'IND']).set_index(ImpTrade_ROW.index.names)
-        df2 = pd.merge(subset_T.reset_index(), ExpTrade_ROW.reset_index(), on=['CNTRY', 'IND'], how='inner').set_index(['CNTRY', 'IND'])
+        df1 = ImpTrade_ROW.reset_index().join(T_row,on=['CNTRY', 'SEC']).set_index(ImpTrade_ROW.index.names)
+        df2 = pd.merge(subset_T.reset_index(), ExpTrade_ROW.reset_index(), on=['CNTRY', 'SEC'], how='inner').set_index(['CNTRY', 'SEC'])
         subset_T = pd.concat([df1,df2])
     
        
         # combine matrices to have a new final demand matrix
-        df1 = ImpFD_ROW.reset_index().join(FD_row,on=['CNTRY', 'IND']).set_index(ImpFD_ROW.index.names)
-        df2 = pd.merge(subset_FD.reset_index(), ExpFD_ROW.reset_index(), on=['CNTRY', 'IND'], how='inner').set_index(['CNTRY', 'IND'])
+        df1 = ImpFD_ROW.reset_index().join(FD_row,on=['CNTRY', 'SEC']).set_index(ImpFD_ROW.index.names)
+        df2 = pd.merge(subset_FD.reset_index(), ExpFD_ROW.reset_index(), on=['CNTRY', 'SEC'], how='inner').set_index(['CNTRY', 'SEC'])
         subset_FD = pd.concat([df1,df2])
         
         # combine matrices to have a new Value Added matrix
         subset_VA = subset_VA.join(VA_row)
         sum_subset = subset_T.sum(axis=1) + subset_FD.sum(axis=1)             
         sum_outlays =  subset_VA.sum()   + subset_T.sum(axis=0)     
-        sum_outlays.index.names = ['CNTRY', 'IND']
+        sum_outlays.index.names = ['CNTRY', 'SEC']
         
-        VA_TZAetal = pd.DataFrame((subset_VA.sum() + (sum_subset-sum_outlays)).rename("VA"))            
+        VA_TZAetal = pd.DataFrame((subset_VA.sum()).rename("VA"))            
 
 
-        subset_T.columns.names = ['CNTRY', 'IND']
-        A = subset_T.divide(sum_subset,axis=1)
+        subset_T.columns.names = ['CNTRY', 'SEC']
+        self.A = subset_T.divide(sum_subset,axis=1)
+        
+        self.A = self.A.fillna(0)
+
+        self.A[self.A == 0] = 1e-10
     
         """
         Return all the parts of the dataset to the class again
         """
         
         self.Z_matrix = {r + k: v for r, kv in subset_T.iterrows() for k,v in kv.to_dict().items()}
-        self.A_matrix = {r + k: v for r, kv in A.iterrows() for k,v in kv.to_dict().items()}
+        self.A_matrix = {r + k: v for r, kv in self.A.iterrows() for k,v in kv.to_dict().items()}
         self.FinalD = {r + k: v for r, kv in subset_FD.iterrows() for k,v in kv.to_dict().items()}
         self.ValueA = {r + (k,): v for r, kv in VA_TZAetal.iterrows() for k,v in kv.to_dict().items()}
 
